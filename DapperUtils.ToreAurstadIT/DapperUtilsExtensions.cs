@@ -21,7 +21,7 @@ namespace DapperUtils.ToreAurstadIT
         /// <typeparam name="T">The type of ienumerable to return and strong type to return upon</typeparam>
         /// <param name="connection">IDbConnection instance (e.g. SqlConnection)</param>
         /// <param name="orderByMember">The property to order with</param>
-        /// <param name="sql">The select clause sql to use as basis for the complete paging</param>
+        /// <param name="sql">The select clause sql to use as basis for the complete paging e.g. 'select * from mytable' and so on.</param>
         /// <param name="pageNumber">The page index to fetch. 0-based (Starts with 0)</param>
         /// <param name="pageSize">The page size. Must be a positive number</param>
         /// <param name="sortAscending">Which direction to sort. True means ascending, false means descending</param>
@@ -69,6 +69,33 @@ namespace DapperUtils.ToreAurstadIT
             }
             var parameters = new DynamicParameters(parametersDictionary);
             return connection.Query<T>(sql, parameters);
+        }
+
+        /// <summary>
+        /// Searches for a searchterm with 'LIKE' operator against the parameter and column provided in your sql provided
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="sql">Example: 'select * from products where ProductName like @ProdName. @ProdName must exist in the <paramref name="parametersDictionary"/></param>
+        /// <param name="searchTerm"></param>
+        /// <param name="parametersDictionary"></param>
+        /// <returns></returns>
+        public static IEnumerable<T> ParameterizedLike<T>(this IDbConnection connection, string sql, string searchTerm,
+            Dictionary<string, object> parametersDictionary)
+        {
+            return connection.ParameterizedQuery<T>(sql, new Dictionary<string, object> { { "@ProdName", Like($"{searchTerm}") } });
+        }
+
+        public static string Like(string searchTerm)
+        {
+            if (string.IsNullOrEmpty(searchTerm))
+            {
+                return null;
+            }
+
+            string searchTermLocal = searchTerm;
+            Func<string, string> encodeForLike = x => searchTerm.Replace("[", "[[]").Replace("%", "[%]");
+            return $"%{encodeForLike(searchTerm)}%";
         }
 
         public static IEnumerable<ExpandoObject> ParameterizedQuery(this IDbConnection connection, string sql,

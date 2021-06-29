@@ -37,7 +37,29 @@ namespace DapperUtils.ToreAurstadIT.Tests
                 Connection.Dispose();
                 Connection = null;
             }
+        }
 
+        [Test]
+        public void ParameterizedLikeReturnsExpected()
+        {
+            var sql = "select * from products where ProductName like @ProdName";
+            var herrings = Connection.ParameterizedLike<Product>(sql, "sild",
+                    new Dictionary<string, object> {{"@ProdName", "sild"}}).ToList();
+            herrings.Count().Should().Be(2);
+            string herringsSorts = string.Join(",", herrings?.Select(x => x.ProductName));
+            herringsSorts.Should().Be("Rogede sild,Spegesild");
+        }
+
+        [Test]
+        public void GetPageReturnsExpected()
+        {
+            var sql = $"select * from products";
+            var productPage = Connection.GetPage<Product>(m => m.ProductID, sql, 0, 5, sortAscending: true).ToList();
+            Assert.IsNotNull(productPage);
+            productPage?.Should().NotBeEmpty();
+            productPage?.Count().Should().Be(5);
+            string productIds = string.Join(",", productPage?.Select(x => x.ProductID));
+            productIds.Should().Be("1,2,3,4,5");
         }
 
         [Test]
