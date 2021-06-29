@@ -98,6 +98,86 @@ namespace DapperUtils.ToreAurstadIT
             return $"%{encodeForLike(searchTerm)}%";
         }
 
+        /// <summary>
+        /// Returns aggregate function calculations. To use '*' row-wise calculations pass in null for the aggregateColumn.
+        /// The resulting expanded object can be iterated over and stored into a dynamic variable to retrieve the properties inside, or
+        /// casted to an IDictionary&lt;string,object&gt; for example.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="aggregateColumn">If null, the '*' will be used, e.g. sum(*), count(*) and so on.</param>
+        /// <param name="calculation">Type of aggregate function to use.</param>
+        /// <param name="groupingColumns">If grouping is desired, list up the columns to group on</param>
+        /// <param name="tableName">Provided name of DB table to retrieve. If null, the name of the POCO type attribute <typeparam name="T"></typeparam></param> will be used.
+        /// <param name="aliasForAggregate"></param>
+        /// <returns></returns>
+        public static IEnumerable<ExpandoObject> GetAggregate<T>(this IDbConnection connection, Expression<Func<T, object>> aggregateColumn,
+            AggregateFunction calculation, Expression<Func<T, object>>[] groupingColumns = null,
+            string tableName = null, string aliasForAggregate = "Value")
+        {
+            if (tableName == null)
+            {
+                tableName = typeof(T).Name;
+            }
+            string aggregateColumnName = GetMemberName<T>(aggregateColumn);
+            string groupingColumnsJoined = string.Empty;
+            if (groupingColumns != null && groupingColumns.Any())
+            {
+                groupingColumnsJoined = string.Join(",", groupingColumns.Select(c => GetMemberName<T>(c)));
+            }
+            string aggregateFunctionExpression = GetAggregateFunctionExpression(calculation, aggregateColumnName, groupingColumnsJoined, aliasForAggregate);
+            var sql = $"select {aggregateFunctionExpression} from {tableName}";
+            if (!string.IsNullOrEmpty(groupingColumnsJoined))
+            {
+                sql += $"{Environment.NewLine}group by {groupingColumnsJoined}";
+            }
+            var results = connection.Query(sql).Select(x => (ExpandoObject) ToExpandoObject(x));
+            return results;
+        }
+
+        private static string GetAggregateFunctionExpression(AggregateFunction function, string aggregateColumnName,
+            string groupingColumnsJoined, string aliasForAggregate)
+        {
+            string aggregateColumnSuffix = !string.IsNullOrEmpty(groupingColumnsJoined) ? $",{groupingColumnsJoined}" : string.Empty;
+            string aggregateFunctionExpression = string.Empty;
+            switch (function)
+            {
+                case AggregateFunction.Count:
+                    aggregateFunctionExpression = $"count({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Sum:
+                    aggregateFunctionExpression = $"sum({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Min:
+                    aggregateFunctionExpression = $"min({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Max:
+                    aggregateFunctionExpression = $"max({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Avg:
+                    aggregateFunctionExpression = $"avg({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Var:
+                    aggregateFunctionExpression = $"var({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Varp:
+                    aggregateFunctionExpression = $"varp({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Stdevp:
+                    aggregateFunctionExpression = $"stdevp({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.CountBig:
+                    aggregateFunctionExpression = $"count_big({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Stdev:
+                    aggregateFunctionExpression = $"stdev({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                default:
+                    break;
+            }
+            return $"{aggregateFunctionExpression}{aggregateColumnSuffix}";
+        }
+
         public static IEnumerable<ExpandoObject> ParameterizedQuery(this IDbConnection connection, string sql,
             Dictionary<string, object> parametersDictionary)
         {
