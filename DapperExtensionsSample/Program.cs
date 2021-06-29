@@ -153,7 +153,9 @@ namespace DapperExtensionsSample
             {
                 return null;
             }
-            Func<string, string> encodeForLike = searchTerm => searchTerm.Replace("[", "[[]").Replace("%", "[%]");
+
+            string searchTermLocal = searchTerm;
+            Func<string, string> encodeForLike = x => searchTerm.Replace("[", "[[]").Replace("%", "[%]");
             return $"%{encodeForLike(searchTerm)}%";
         }
 
