@@ -6,6 +6,7 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Linq.Expressions;
+using Dapper;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using FluentAssertions;
@@ -138,7 +139,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
                 aliasForAggregate: "Stdevp").ToList();
             stdevps.Count.Should().Be(1);
             dynamic totalSum = stdevps.First();
-            Assert.IsTrue(Math.Abs(totalSum.Stdevp - 35.92) < 0.01);
+            Assert.IsTrue(Math.Abs(totalSum.Stdevp - 35.92f) < 0.01);
         }
 
         [Test]
@@ -149,8 +150,17 @@ namespace DapperUtils.ToreAurstadIT.Tests
                 aliasForAggregate: "Varp").ToList();
             varps.Count.Should().Be(1);
             dynamic totalSum = varps.First();
-            Assert.IsTrue(Math.Abs(totalSum.Varp - 1289.65) < 0.01);
+            Assert.IsTrue(Math.Abs(totalSum.Varp - 1289.65f) < 0.01);
         }
+
+        //Test also Dapper's ExecuteScalar built-in .. 
+        [Test]
+        public void GetStDevViaBuiltInReturnsExpected()
+        {
+            var stdev = Connection.ExecuteScalar<double>("select stdev(UnitsInStock) from products");
+            Assert.IsTrue(Math.Abs(stdev - 36.15f) < 0.01);
+        }
+
         [Test]
         public void GetVarReturnsExpected()
         {
@@ -159,7 +169,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
                 aliasForAggregate: "Var").ToList();
             vars.Count.Should().Be(1);
             dynamic totalSum = vars.First();
-            Assert.IsTrue(Math.Abs(totalSum.Var - 1306.62) < 0.01);
+            Assert.IsTrue(Math.Abs(totalSum.Var - 1306.62f) < 0.01);
         }
 
         [Test]
