@@ -16,5 +16,6 @@ namespace DapperUtils.ToreAurstadIT.Tests
         public short? UnitsOnOrder { get; set; }
         public short? ReorderLevel { get; set; }
         public bool? Discontinued { get; set; }
+        public Category Category { get; set; }
     }
 }
