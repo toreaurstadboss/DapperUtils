@@ -4,7 +4,10 @@ using System.Data;
 using System.Dynamic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 using Dapper;
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Reflection;
 
 namespace DapperUtils.ToreAurstadIT
 {
@@ -69,6 +72,70 @@ namespace DapperUtils.ToreAurstadIT
             }
             var parameters = new DynamicParameters(parametersDictionary);
             return connection.Query<T>(sql, parameters);
+        }
+
+        /// <summary>
+        /// Inner joins the left and right tables by specified left and right key expression lambdas.
+        /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="leftKey"/>
+        /// and <paramref name="rightKey"/> are compatible data types as they are used for the join.
+        /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
+        /// just specifying the two columns to join.
+        /// </summary>
+        /// <typeparam name="TLeftTable"></typeparam>
+        /// <typeparam name="TRightTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="leftKey"></param>
+        /// <param name="rightKey"></param>
+        /// <returns></returns>
+        public static IEnumerable<ExpandoObject> InnerJoin<TLeftTable, TRightTable>(this IDbConnection connection, 
+            Expression<Func<TLeftTable, object>> leftKey, Expression<Func<TRightTable, object>> rightKey)
+        {
+            var builder = new SqlBuilder();
+            string leftTableSelectClause = string.Join(",", GetPublicPropertyNames<TLeftTable>("l"));
+            string rightTableSelectClause = string.Join(",", GetPublicPropertyNames<TRightTable>("r"));
+            string leftKeyName = GetMemberName(leftKey);
+            string rightKeyName = GetMemberName(rightKey); 
+            string leftTableName = GetDbTableName<TLeftTable>();
+            string rightTableName = GetDbTableName<TRightTable>(); 
+            string joinSelectClause = $"select {leftTableSelectClause}, {rightTableSelectClause} from {leftTableName} l /**innerjoin**/";
+            var selector = builder.AddTemplate(joinSelectClause);
+            builder.InnerJoin($"{rightTableName} r on l.{leftKeyName} = r.{rightKeyName}");
+            var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
+                .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
+            return joinedResults;
+        }
+
+        /// <summary>
+        /// Returns database table name, either via the System.ComponentModel.DataAnnotations.Schema.Table attribute
+        /// if it exists, or just the name of the <typeparamref name="TClass"/> type parameter. 
+        /// </summary>
+        /// <typeparam name="TClass"></typeparam>
+        /// <returns></returns>
+        private static string GetDbTableName<TClass>()
+        {
+            var tableAttribute = typeof(TClass).GetCustomAttributes(typeof(TableAttribute), false)?.FirstOrDefault() as TableAttribute;
+            if (tableAttribute != null)
+            {
+                if (!string.IsNullOrEmpty(tableAttribute.Schema))
+                {
+                    return $"[{tableAttribute.Schema}].[{tableAttribute.Name}]";
+                }
+                return tableAttribute.Name;
+            }
+            return typeof(TClass).Name;
+        }     
+
+        private static string[] GetPublicPropertyNames<T>(string tableQualifierPrefix = null) {
+            return typeof(T).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                 .Where(x => !IsNotMapped(x))
+                 .Select(x => !string.IsNullOrEmpty(tableQualifierPrefix) ? tableQualifierPrefix + "." + x.Name : x.Name).ToArray();
+        }
+
+        private static bool IsNotMapped(PropertyInfo x)
+        {
+            var notmappedAttr = x.GetCustomAttributes<NotMappedAttribute>()?.OfType<NotMappedAttribute>().FirstOrDefault();
+            return notmappedAttr != null;
         }
 
         /// <summary>
@@ -210,8 +277,17 @@ namespace DapperUtils.ToreAurstadIT
                 return expando as ExpandoObject;
             }
             foreach (KeyValuePair<string, object> property in dapperRowProperties)
-                expando.Add(property.Key, property.Value);
-
+            {
+                if (!expando.ContainsKey(property.Key))
+                {
+                    expando.Add(property.Key, property.Value);
+                }
+                else
+                {
+                    //prefix the colliding key with a random guid suffixed 
+                    expando.Add(property.Key + Guid.NewGuid().ToString("N"), property.Value);
+                } 
+            }
             return expando as ExpandoObject;
         }
 

@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Text;
 
 namespace DapperUtils.ToreAurstadIT.Tests
 {
+    [Table("Products")]
 	public class Product
     {
         public int ProductID { get; set; }
@@ -16,6 +18,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
         public short? UnitsOnOrder { get; set; }
         public short? ReorderLevel { get; set; }
         public bool? Discontinued { get; set; }
+        [NotMapped]
         public Category Category { get; set; }
     }
 }

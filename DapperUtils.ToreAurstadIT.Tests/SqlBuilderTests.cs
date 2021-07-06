@@ -48,16 +48,23 @@ namespace DapperUtils.ToreAurstadIT.Tests
         }
 
         [Test]
-        public void JoinReturnsExpected()
+        public void InnerJoinWithManualSqlReturnsExpected()
         {
             var builder = new SqlBuilder();
             var selector = builder.AddTemplate("select p.ProductID, p.ProductName, p.CategoryID, c.CategoryName, s.SupplierID, s.City from products p /**innerjoin**/");
             builder.InnerJoin("categories c on c.CategoryID = p.CategoryID");
             builder.InnerJoin("suppliers s on p.SupplierID = s.SupplierID");
-            dynamic joinedproductsandcategory = Connection.Query(selector.RawSql, selector.Parameters).Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
-            var firstRow = joinedproductsandcategory[0];
+            dynamic joinedproductsandcategoryandsuppliers = Connection.Query(selector.RawSql, selector.Parameters).Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
+            var firstRow = joinedproductsandcategoryandsuppliers[0];
             Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.City, "1Chai1Beverages1London");
-            Assert.IsNotNull(joinedproductsandcategory);
+        }
+
+        [Test]
+        public void InnerJoinWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin<Product, Category>(l => l.CategoryID, r => r.CategoryID);
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID, "1Chai1Beverages1");
         }
 
         private static IConfigurationRoot SetupConfigurationFile()
