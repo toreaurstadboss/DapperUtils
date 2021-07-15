@@ -10,6 +10,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
     {
         public int CategoryID { get; set; }
         public string CategoryName { get; set; }
+        [NotMapped]
         public string Description { get; set; }
         public byte Picture { get; set; }
     }

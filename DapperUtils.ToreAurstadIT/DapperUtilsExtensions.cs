@@ -195,18 +195,18 @@ namespace DapperUtils.ToreAurstadIT
             joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
             builder.InnerJoin($"{secondTableName} t2 on t1.{firstKeyName} = t2.{secondKeyName}");
-            builder.InnerJoin($"{thirdTableName} t3 on t2.{secondKeyName} = t3.{thirdKeyName}");
+            builder.InnerJoin($"{thirdTableName} t3 on t1.{thirdKeyName} = t3.{thirdKeyName}");
             if (fourthTableName != null)
             {
-                builder.InnerJoin($"{fourthTableName} t4 on t3.{thirdKeyName} = t4.{fourthKeyName}");
+                builder.InnerJoin($"{fourthTableName} t4 on t1.{fourthKeyName} = t4.{fourthKeyName}");
             }
             if (fifthTableName != null)
             {
-                builder.InnerJoin($"{fifthTableName} t5 on t4.{fourthKeyName} = t5.{fifthKeyName}");
+                builder.InnerJoin($"{fifthTableName} t5 on t1.{fifthKeyName} = t5.{fifthKeyName}");
             }
             if (sixthTableName != null)
             {
-                builder.InnerJoin($"{sixthTableName} t6 on t5.{fifthKeyName} = t6.{sixthKeyName}");
+                builder.InnerJoin($"{sixthTableName} t6 on t1.{sixthKeyName} = t6.{sixthKeyName}");
             }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
