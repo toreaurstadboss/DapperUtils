@@ -77,6 +77,16 @@ namespace DapperUtils.ToreAurstadIT.Tests
             Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID, "1Chai1Beverages1");
         }
 
+        [Test]
+        public void InnerJoinThreeTablesWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin<Product,Category, Supplier>(
+                l => l.CategoryID,
+                c => c.CategoryID, s => s.SupplierID);
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "1Chai1Beverages1Exotic Liquids");
+        }
+
         private static IConfigurationRoot SetupConfigurationFile()
         {
             var builder = new ConfigurationBuilder()
