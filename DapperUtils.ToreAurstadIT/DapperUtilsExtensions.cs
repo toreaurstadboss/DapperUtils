@@ -107,6 +107,61 @@ namespace DapperUtils.ToreAurstadIT
         }
 
         /// <summary>
+        /// Inner joins the six tables by specified six key expression lambdas.
+        /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="firstKey"/>
+        /// and <paramref name="secondKey"/> are compatible data types as they are used for the join, plus the other keys involved.
+        /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
+        /// just specifying the two columns to join.
+        /// </summary>
+        /// <typeparam name="TfirstTable"></typeparam>
+        /// <typeparam name="TsecondTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="firstKey"></param>
+        /// <param name="secondKey"></param>
+        /// <returns></returns>
+        public static IEnumerable<ExpandoObject> Join<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TSixthTable>(this IDbConnection connection,
+                Expression<Func<TFirstTable, object>> firstKey, 
+                Expression<Func<TSecondTable, object>> secondKey,
+                Expression<Func<TThirdTable, object>> thirdKey,
+                 Expression<Func<TFourthTable, object>> fourthKey,
+                Expression<Func<TFifthTable, object>> fifthKey,
+                Expression<Func<TSixthTable, object>> sixthKey
+            )
+        {
+            var builder = new SqlBuilder();
+            string firstTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstTable>("t1"));
+            string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondTable>("t2"));
+            string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TThirdTable>("t3"));
+            string fourthTableSelectClause = string.Join(",", GetPublicPropertyNames<TFourthTable>("t4"));
+            string fifthTableSelectClause = string.Join(",", GetPublicPropertyNames<TFifthTable>("t5"));
+            string sixtTableSelectClause = string.Join(",", GetPublicPropertyNames<TSixthTable>("t6"));
+            string firstKeyName = GetMemberName(firstKey);
+            string secondKeyName = GetMemberName(secondKey);
+            string thirdKeyName = GetMemberName(thirdKey);
+            string fourthKeyName = GetMemberName(fourthKey);
+            string fifthKeyName = GetMemberName(fifthKey);
+            string sixthKeyName = GetMemberName(sixthKey);
+            string firstTableName = GetDbTableName<TFirstTable>();
+            string secondTableName = GetDbTableName<TSecondTable>();
+            string thirdTableName = GetDbTableName<TThirdTable>();
+            string fourthTableName = GetDbTableName<TFourthTable>();
+            string fifthTableName = GetDbTableName<TFifthTable>();
+            string sixthTableName = GetDbTableName<TSixthTable>();
+
+            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}, {thirdTableSelectClause}, {fourthTableSelectClause}, {fifthTableSelectClause}, {sixtTableSelectClause} from {firstTableName} t1 /**innerjoin**/";
+            var selector = builder.AddTemplate(joinSelectClause);
+            builder.InnerJoin($"{secondTableName} t2 on t1.{firstKeyName} = t2.{secondKeyName}");
+            builder.InnerJoin($"{thirdTableName} t3 on t2.{secondKeyName} = t3.{thirdKeyName}");
+            builder.InnerJoin($"{fourthTableName} t4 on t3.{thirdKeyName} = t4.{fourthKeyName}");
+            builder.InnerJoin($"{fifthTableName} t5 on t4.{fourthKeyName} = t5.{fifthKeyName}");
+            builder.InnerJoin($"{sixthTableName} t6 on t5.{fifthKeyName} = t6.{sixthKeyName}");
+            var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
+                .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
+            return joinedResults;
+        }
+
+        /// <summary>
         /// Returns database table name, either via the System.ComponentModel.DataAnnotations.Schema.Table attribute
         /// if it exists, or just the name of the <typeparamref name="TClass"/> type parameter. 
         /// </summary>
@@ -114,7 +169,12 @@ namespace DapperUtils.ToreAurstadIT
         /// <returns></returns>
         private static string GetDbTableName<TClass>()
         {
-            var tableAttribute = typeof(TClass).GetCustomAttributes(typeof(TableAttribute), false)?.FirstOrDefault() as TableAttribute;
+            return GetDbTableFromType(typeof(TClass));
+        }
+
+        private static string GetDbTableFromType(Type table)
+        {
+            var tableAttribute = table.GetCustomAttributes(typeof(TableAttribute), false)?.FirstOrDefault() as TableAttribute;
             if (tableAttribute != null)
             {
                 if (!string.IsNullOrEmpty(tableAttribute.Schema))
@@ -123,11 +183,17 @@ namespace DapperUtils.ToreAurstadIT
                 }
                 return tableAttribute.Name;
             }
-            return typeof(TClass).Name;
-        }     
+            return table.Name;
+        }
 
-        private static string[] GetPublicPropertyNames<T>(string tableQualifierPrefix = null) {
-            return typeof(T).GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+        private static string[] GetPublicPropertyNames<T>(string tableQualifierPrefix = null)
+        {
+            return GetPublicPropertyNamesFromType(tableQualifierPrefix, typeof(T));
+        }
+
+        private static string[] GetPublicPropertyNamesFromType(string tableQualifierPrefix, Type table)
+        {
+            return table.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
                  .Where(x => !IsNotMapped(x))
                  .Select(x => !string.IsNullOrEmpty(tableQualifierPrefix) ? tableQualifierPrefix + "." + x.Name : x.Name).ToArray();
         }
@@ -291,6 +357,7 @@ namespace DapperUtils.ToreAurstadIT
             return expando as ExpandoObject;
         }
 
+
         private static string GetMemberName<T>(Expression<Func<T, object>> expression)
         {
             switch (expression.Body)
@@ -299,6 +366,19 @@ namespace DapperUtils.ToreAurstadIT
                     return m.Member.Name;
                 case UnaryExpression u when u.Operand is MemberExpression m:
                     return m.Member.Name;
+                default:
+                    throw new NotImplementedException(expression.GetType().ToString());
+            }
+        }
+
+        private static Type GetTypeWrappingMember(Expression<Func<object, object>> expression)
+        {
+            switch (expression.Body)
+            {
+                case MemberExpression m:
+                    return m.Member.DeclaringType;
+                case UnaryExpression u when u.Operand is MemberExpression m:
+                    return m.Member.DeclaringType;
                 default:
                     throw new NotImplementedException(expression.GetType().ToString());
             }
