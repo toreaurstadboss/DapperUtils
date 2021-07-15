@@ -6,7 +6,7 @@ using System.Text;
 namespace DapperUtils.ToreAurstadIT.Tests
 {
 
-    [Table("OrderDetails")]
+    [Table("[Order Details]")]
     public class OrderDetail
     {
         public int OrderID { get; set; }
