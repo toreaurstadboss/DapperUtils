@@ -70,7 +70,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
         [Test]
         public void InnerJoinSixTablesWithoutManualSqlReturnsExpected()
         {
-            var joinedproductsandcategory = Connection.Join<Product, Category, Category, Category, Category, Supplier>(
+            var joinedproductsandcategory = Connection.InnerJoin<Product, Category, Category, Category, Category, Supplier>(
                 l => l.CategoryID,
                 c => c.CategoryID, c => c.CategoryID, c => c.CategoryID, c => c.CategoryID, s => s.SupplierID);
             dynamic firstRow = joinedproductsandcategory.ElementAt(0);

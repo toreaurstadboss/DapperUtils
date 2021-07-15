@@ -106,56 +106,108 @@ namespace DapperUtils.ToreAurstadIT
             return joinedResults;
         }
 
-        /// <summary>
-        /// Inner joins the six tables by specified six key expression lambdas.
-        /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
-        /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="firstKey"/>
-        /// and <paramref name="secondKey"/> are compatible data types as they are used for the join, plus the other keys involved.
-        /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
-        /// just specifying the two columns to join.
-        /// </summary>
-        /// <typeparam name="TfirstTable"></typeparam>
-        /// <typeparam name="TsecondTable"></typeparam>
-        /// <param name="connection"></param>
-        /// <param name="firstKey"></param>
-        /// <param name="secondKey"></param>
-        /// <returns></returns>
-        public static IEnumerable<ExpandoObject> Join<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TSixthTable>(this IDbConnection connection,
+        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable>(this IDbConnection connection,
+          Expression<Func<TFirstTable, object>> firstKey,
+          Expression<Func<TSecondTable, object>> secondKey,
+          Expression<Func<TThirdTable, object>> thirdKey
+      )
+        {
+            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, null);
+        }
+
+        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable>(this IDbConnection connection,
+            Expression<Func<TFirstTable, object>> firstKey,
+            Expression<Func<TSecondTable, object>> secondKey,
+            Expression<Func<TThirdTable, object>> thirdKey,
+            Expression<Func<TFourthTable, object>> fourthKey
+        )
+        {
+            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, fourthKey, null);
+        }
+
+        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable>(this IDbConnection connection,
+            Expression<Func<TFirstTable, object>> firstKey,
+            Expression<Func<TSecondTable, object>> secondKey,
+            Expression<Func<TThirdTable, object>> thirdKey,
+            Expression<Func<TFourthTable, object>> fourthKey,
+            Expression<Func<TFifthTable, object>> fifthKey
+        )
+        {
+            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, fourthKey, fifthKey, null);
+        }
+
+            /// <summary>
+            /// Inner joins the six tables by specified six key expression lambdas.
+            /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
+            /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="firstKey"/>
+            /// and <paramref name="secondKey"/> are compatible data types as they are used for the join, plus the other keys involved.
+            /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
+            /// just specifying the two columns to join.
+            /// </summary>
+            /// <typeparam name="TfirstTable"></typeparam>
+            /// <typeparam name="TsecondTable"></typeparam>
+            /// <param name="connection"></param>
+            /// <param name="firstKey"></param>
+            /// <param name="secondKey"></param>
+            /// <returns></returns>
+            public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TSixthTable>(this IDbConnection connection,
                 Expression<Func<TFirstTable, object>> firstKey, 
                 Expression<Func<TSecondTable, object>> secondKey,
                 Expression<Func<TThirdTable, object>> thirdKey,
-                 Expression<Func<TFourthTable, object>> fourthKey,
-                Expression<Func<TFifthTable, object>> fifthKey,
-                Expression<Func<TSixthTable, object>> sixthKey
+                Expression<Func<TFourthTable, object>> fourthKey = null,
+                Expression<Func<TFifthTable, object>> fifthKey = null,
+                Expression<Func<TSixthTable, object>> sixthKey = null
             )
         {
             var builder = new SqlBuilder();
             string firstTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstTable>("t1"));
             string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondTable>("t2"));
             string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TThirdTable>("t3"));
-            string fourthTableSelectClause = string.Join(",", GetPublicPropertyNames<TFourthTable>("t4"));
-            string fifthTableSelectClause = string.Join(",", GetPublicPropertyNames<TFifthTable>("t5"));
-            string sixtTableSelectClause = string.Join(",", GetPublicPropertyNames<TSixthTable>("t6"));
+            string fourthTableSelectClause = typeof(TFourthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthTable>("t4")) : null;
+            string fifthTableSelectClause = typeof(TFifthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthTable>("t5")) : null;
+            string sixthTableSelectClause = typeof(TSixthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TSixthTable>("t6")) : null;
             string firstKeyName = GetMemberName(firstKey);
             string secondKeyName = GetMemberName(secondKey);
             string thirdKeyName = GetMemberName(thirdKey);
-            string fourthKeyName = GetMemberName(fourthKey);
-            string fifthKeyName = GetMemberName(fifthKey);
-            string sixthKeyName = GetMemberName(sixthKey);
+            string fourthKeyName = typeof(TFourthTable) != typeof(TUnsetType) ? GetMemberName(fourthKey) : null;
+            string fifthKeyName = typeof(TFifthTable) != typeof(TUnsetType) ? GetMemberName(fifthKey) : null;
+            string sixthKeyName = typeof(TSixthTable) != typeof(TUnsetType) ? GetMemberName(sixthKey) : null;
             string firstTableName = GetDbTableName<TFirstTable>();
             string secondTableName = GetDbTableName<TSecondTable>();
             string thirdTableName = GetDbTableName<TThirdTable>();
-            string fourthTableName = GetDbTableName<TFourthTable>();
-            string fifthTableName = GetDbTableName<TFifthTable>();
-            string sixthTableName = GetDbTableName<TSixthTable>();
+            string fourthTableName = typeof(TFourthTable) != typeof(TUnsetType) ? GetDbTableName<TFourthTable>() : null;
+            string fifthTableName = typeof(TFifthTable) != typeof(TUnsetType) ? GetDbTableName<TFifthTable>() : null;
+            string sixthTableName = typeof(TSixthTable) != typeof(TUnsetType) ? GetDbTableName<TSixthTable>() : null;
 
-            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}, {thirdTableSelectClause}, {fourthTableSelectClause}, {fifthTableSelectClause}, {sixtTableSelectClause} from {firstTableName} t1 /**innerjoin**/";
+            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}, {thirdTableSelectClause}"; 
+            if (fourthTableSelectClause != null)
+            {
+                joinSelectClause += $", {fourthTableSelectClause}";
+            }
+            if (fifthTableSelectClause != null)
+            {
+                joinSelectClause += $", {fifthTableSelectClause}";
+            }
+            if (sixthTableSelectClause != null)
+            {
+                joinSelectClause += $", {sixthTableSelectClause}";
+            }
+            joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
             builder.InnerJoin($"{secondTableName} t2 on t1.{firstKeyName} = t2.{secondKeyName}");
             builder.InnerJoin($"{thirdTableName} t3 on t2.{secondKeyName} = t3.{thirdKeyName}");
-            builder.InnerJoin($"{fourthTableName} t4 on t3.{thirdKeyName} = t4.{fourthKeyName}");
-            builder.InnerJoin($"{fifthTableName} t5 on t4.{fourthKeyName} = t5.{fifthKeyName}");
-            builder.InnerJoin($"{sixthTableName} t6 on t5.{fifthKeyName} = t6.{sixthKeyName}");
+            if (fourthTableName != null)
+            {
+                builder.InnerJoin($"{fourthTableName} t4 on t3.{thirdKeyName} = t4.{fourthKeyName}");
+            }
+            if (fifthTableName != null)
+            {
+                builder.InnerJoin($"{fifthTableName} t5 on t4.{fourthKeyName} = t5.{fifthKeyName}");
+            }
+            if (sixthTableName != null)
+            {
+                builder.InnerJoin($"{sixthTableName} t6 on t5.{fifthKeyName} = t6.{sixthKeyName}");
+            }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
             return joinedResults;
