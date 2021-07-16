@@ -74,6 +74,7 @@ namespace DapperUtils.ToreAurstadIT
             return connection.Query<T>(sql, parameters);
         }
 
+        #region OldImplementationInnerJoin
         ///// <summary>
         ///// Inner joins the left and right tables by specified left and right key expression lambdas.
         ///// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
@@ -105,7 +106,31 @@ namespace DapperUtils.ToreAurstadIT
         //        .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
         //    return joinedResults;
         //}
+        #endregion
 
+        /// <summary>
+        /// Inner joins two tables by specified up to join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The one join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join three tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 3 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinTwoTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///       );
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName, "5Sales Manager10248Vins et alcools Chevalier'");
+        ///}
+        /// </code>
+        /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
 TFirstJoinLeft, TFirstJoinRight>(this IDbConnection connection,
 Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
@@ -115,6 +140,31 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 firstJoin, null, null, null, null, null);
         }
 
+        /// <summary>
+        /// Inner joins three tables by specified up to two join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The 3 join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// <paramref name="secondJoin">Second join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join three tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 3 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///        (Order o, Employee e) => o.EmployeeID == e.EmployeeID    
+        ///       );
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales'");
+        ///}
+        /// </code>
+        /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
      TFirstJoinLeft, TFirstJoinRight,
      TSecondJoinLeft, TSecondJoinRight>(this IDbConnection connection,
@@ -126,6 +176,33 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 firstJoin, secondJoin, null, null, null, null);
         }
 
+        /// <summary>
+        /// Inner joins four tables by specified up to three join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The 3 join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// <paramref name="secondJoin">Second join expression</paramref>
+        /// <paramref name="thirdJoin">Third join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join five tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 4 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///        (Order o, Employee e) => o.EmployeeID == e.EmployeeID,
+        ///       (OrderDetail od, Product p) => od.ProductID == p.ProductID        ///      
+        ///       );
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products'");
+        ///}
+        /// </code>
+        /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
         TFirstJoinLeft, TFirstJoinRight,
         TSecondJoinLeft, TSecondJoinRight,
@@ -139,6 +216,36 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 firstJoin, secondJoin, thirdJoin, null, null, null);
         }
 
+
+        /// <summary>
+        /// Inner joins five tables by specified up to four join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The 4 join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// <paramref name="secondJoin">Second join expression</paramref>
+        /// <paramref name="thirdJoin">Third join expression</paramref>
+        /// <paramref name="fourthJoin">Fourth join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join five tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 6 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///        (Order o, Employee e) => o.EmployeeID == e.EmployeeID,
+        ///       (OrderDetail od, Product p) => od.ProductID == p.ProductID,
+        ///        (Product p, Category c) => p.CategoryID == c.CategoryID
+        ///       );
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products'");
+        ///}
+        /// </code>
+        /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
            TFirstJoinLeft, TFirstJoinRight,
            TSecondJoinLeft, TSecondJoinRight,
@@ -155,6 +262,36 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 firstJoin, secondJoin, thirdJoin, fourthJoin, null, null);
         }
 
+        /// <summary>
+        /// Inner joins six tables by specified up to five join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The 5 join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// <paramref name="secondJoin">Second join expression</paramref>
+        /// <paramref name="thirdJoin">Third join expression</paramref>
+        /// <paramref name="fourthJoin">Fourth join expression</paramref>
+        /// <paramref name="fifthJoin">Fifth join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join five tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 6 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///        (Order o, Employee e) => o.EmployeeID == e.EmployeeID,
+        ///       (OrderDetail od, Product p) => od.ProductID == p.ProductID,
+        ///        (Product p, Category c) => p.CategoryID == c.CategoryID,
+        ///       );
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products'");
+        ///}
+        /// </code>
+        /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
                 TFirstJoinLeft, TFirstJoinRight,
                 TSecondJoinLeft, TSecondJoinRight,
@@ -173,33 +310,50 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 firstJoin, secondJoin, thirdJoin, fourthJoin, fifthJoin, null);
         }
 
-            /// <summary>
-            /// Inner joins the six tables by specified six key expression lambdas.
-            /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
-            /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="firstKey"/>
-            /// and <paramref name="secondKey"/> are compatible data types as they are used for the join, plus the other keys involved.
-            /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
-            /// just specifying the two columns to join.
-            /// </summary>
-            /// <typeparam name="TfirstTable"></typeparam>
-            /// <typeparam name="TsecondTable"></typeparam>
-            /// <param name="connection"></param>
-            /// <param name="firstKey"></param>
-            /// <param name="secondKey"></param>
-            /// <returns></returns>
-            public static IEnumerable<ExpandoObject> InnerJoin<
+        /// <summary>
+        /// Inner joins seven tables by specified up to six join expressions
+        /// This uses internally a template builder and a shortcut to join two tables without having to specify any SQL manually
+        /// and gives you the entire inner join result set. 
+        /// The 6 join expresions must conform to a specific predicate expression type.
+        /// <paramref name="connection">IDbConnection object</paramref>
+        /// <paramref name="firstJoin">First join expression</paramref>
+        /// <paramref name="secondJoin">Second join expression</paramref>
+        /// <paramref name="thirdJoin">Third join expression</paramref>
+        /// <paramref name="fourthJoin">Fourth join expression</paramref>
+        /// <paramref name="fifthJoin">Fifth join expression</paramref>
+        /// <paramref name="sixthJoin">Sixth join expression</paramref>
+        /// </summary>
+        /// <example>This example shows how you can join six tables from the Northwind DB as an example. The joins involved must 
+        /// be expressions that return bool (predicates) for the two tables involved in each join operation. This method supports 7 tables
+        /// via inner joins, via overloads to this method.
+        /// <code>
+        ///    [Test]
+        /// public void InnerJoinSixTablesWithoutManualSqlReturnsExpected()
+        ///{
+        ///    var joinedproductsandcategory = Connection.InnerJoin(
+        ///        (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+        ///        (Order o, Employee e) => o.EmployeeID == e.EmployeeID,
+        ///       (OrderDetail od, Product p) => od.ProductID == p.ProductID,
+        ///        (Product p, Category c) => p.CategoryID == c.CategoryID,
+        ///        (Product p, Supplier s) => p.SupplierID == s.SupplierID);
+        ///    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+        ///    Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
+        ///}
+        /// </code>
+        /// </example>
+        public static IEnumerable<ExpandoObject> InnerJoin<
                 TFirstJoinLeft, TFirstJoinRight,
                 TSecondJoinLeft, TSecondJoinRight,
                 TThirdJoinLeft, TThirdJoinRight,
                 TFourthJoinLeft, TFourthJoinRight,
                 TFifthJoinLeft, TFifthJoinRight,
                 TSixthJoinLeft, TSixthJoinRight>(this IDbConnection connection,     
-                Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin = null,
-                Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin = null,
-                Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin = null,
-                Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin = null,
-                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin = null,
-                Expression<Func<TSixthJoinLeft, TSixthJoinRight, bool>> sixthJoin = null
+                Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+                Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
+                Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
+                Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin,
+                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin,
+                Expression<Func<TSixthJoinLeft, TSixthJoinRight, bool>> sixthJoin
             )
         {
             var builder = new SqlBuilder();

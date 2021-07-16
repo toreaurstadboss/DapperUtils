@@ -87,7 +87,7 @@ namespace DapperUtils.ToreAurstadIT.Tests
         }
 
         [Test]
-        public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        public void InnerJoinSixTablesWithoutManualSqlReturnsExpected()
         {
             var joinedproductsandcategory = Connection.InnerJoin(
                 (Order o, OrderDetail od) => o.OrderID == od.OrderID,
