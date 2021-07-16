@@ -59,24 +59,6 @@ namespace DapperUtils.ToreAurstadIT.Tests
             Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.City, "1Chai1Beverages1London");
         }
 
-        //[Test]
-        //public void InnerJoinWithoutManualSqlReturnsExpected()
-        //{
-        //    var joinedproductsandcategory = Connection.InnerJoin(l => l.CategoryID, r => r.CategoryID);
-        //    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
-        //    Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID, "1Chai1Beverages1");
-        //}
-
-        //[Test]
-        //public void InnerJoinSixTablesWithoutManualSqlReturnsExpected()
-        //{
-        //    var joinedproductsandcategory = Connection.InnerJoin<Product,Category,Supplier>((Product p, Category c) => p.CategoryID == c.CategoryID,
-        //        (Product p, Supplier s) => p.SupplierID == s.SupplierID));
-
-        //    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
-        //    Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID, "1Chai1Beverages1");
-        //}
-
         [Test]
         public void InnerJoinTwoTablesWithoutManualSqlReturnsExpected()
         {
@@ -107,32 +89,15 @@ namespace DapperUtils.ToreAurstadIT.Tests
         [Test]
         public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
         {
-            var joinedproductsandcategory = Connection.InnerJoin((Order o, OrderDetail od) => o.OrderID == od.OrderID,
+            var joinedproductsandcategory = Connection.InnerJoin(
+                (Order o, OrderDetail od) => o.OrderID == od.OrderID,
+                (Order o, Employee e) => o.EmployeeID == e.EmployeeID,
                 (OrderDetail od, Product p) => od.ProductID == p.ProductID,
                 (Product p, Category c) => p.CategoryID == c.CategoryID,
                 (Product p, Supplier s) => p.SupplierID == s.SupplierID);
             dynamic firstRow = joinedproductsandcategory.ElementAt(0);
-            Assert.AreEqual(firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
+            Assert.AreEqual(firstRow.EmployeeID + firstRow.Title + firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "5Sales Manager10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
         }
-
-        //[Test]
-        //public void InnerJoinFourTablesWithoutManualSqlReturnsExpected()
-        //{            
-        //    var joinedproductsandcategory = Connection.InnerJoin<OrderDetail, Product, Category, Supplier>(
-        //        od => od.ProductID, p => p.ProductID, c => c.CategoryID, s => s.SupplierID);
-        //    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
-        //    Assert.AreEqual(firstRow.OrderID.ToString() + firstRow.Quantity.ToString() + firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "10285451Chai1Beverages1Exotic Liquids");
-        //}
-
-
-        //[Test]
-        //public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
-        //{
-        //    var joinedproductsandcategory = Connection.InnerJoin<Order, OrderDetail, Product, Category,Supplier>(
-        //        od => od.OrderID, od => od.OrderID, od => od.ProductID, c => c.CategoryID, s => s.SupplierID);
-        //    dynamic firstRow = joinedproductsandcategory.ElementAt(0);
-        //    Assert.AreEqual(firstRow.OrderID.ToString() + firstRow.Quantity.ToString() + firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "10285451Chai1Beverages1Exotic Liquids");
-        //}
 
         private static IConfigurationRoot SetupConfigurationFile()
         {

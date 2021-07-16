@@ -275,14 +275,14 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             if (fifthTableName != null && fifthTableName != unsetTypeName)
             {
                 registeredTableAliases.Add("t5", typeof(TFourthJoinRight));
-                string tableAliasToMatchForFourthJoin = GetTableAliasForJoin(thirdJoin, registeredTableAliases);
+                string tableAliasToMatchForFourthJoin = GetTableAliasForJoin(fourthJoin, registeredTableAliases);
                 builder.InnerJoin($"{fifthTableName} t5 on {tableAliasToMatchForFourthJoin}.{fourthLeftKeyName} = t5.{fourthRightKeyName}");
             }
             if (sixthTableName != null && sixthTableName != unsetTypeName)
             {
                 registeredTableAliases.Add("t6", typeof(TFifthJoinRight));
-                string tableAliasToMatchForFifthJoin = GetTableAliasForJoin(thirdJoin, registeredTableAliases);
-                builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForFifthJoin}.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
+                string tableAliasToMatchForFifthJoin = GetTableAliasForJoin(fifthJoin, registeredTableAliases);
+                builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForFifthJoin}.{fifthLeftKeyName} = t6.{fifthRightKeyName}");
             }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
