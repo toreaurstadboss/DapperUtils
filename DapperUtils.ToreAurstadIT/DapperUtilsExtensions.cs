@@ -204,11 +204,11 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
         {
             var builder = new SqlBuilder();
             string firstTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstJoinLeft>("t1"));
-            string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondJoinRight>("t2"));
-            string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TThirdJoinRight>("t3"));
-            string fourthTableSelectClause = typeof(TFourthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthJoinRight>("t4")) : null;
-            string fifthTableSelectClause = typeof(TFifthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthJoinRight>("t5")) : null;
-            string sixthTableSelectClause = typeof(TSixthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TSixthJoinRight>("t6")) : null;
+            string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstJoinRight>("t2"));
+            string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondJoinRight>("t3"));
+            string fourthTableSelectClause = typeof(TThirdJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TThirdJoinRight>("t4")) : null;
+            string fifthTableSelectClause = typeof(TFourthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthJoinRight>("t5")) : null;
+            string sixthTableSelectClause = typeof(TFifthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthJoinRight>("t6")) : null;
            
             string firstLeftKeyName = GetJoinKey(firstJoin, true);
             string firstRightKeyName = GetJoinKey(firstJoin, false);
@@ -225,26 +225,26 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
 
 
             string firstTableName = GetDbTableName<TFirstJoinLeft>();
-            string secondTableName = GetDbTableName<TSecondJoinRight>();
-            string thirdTableName = GetDbTableName<TThirdJoinRight>();
-            string fourthTableName = typeof(TFourthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFourthJoinRight>() : null;
-            string fifthTableName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFifthJoinRight>() : null;
-            string sixthTableName = typeof(TSixthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TSixthJoinRight>() : null;
+            string secondTableName = GetDbTableName<TFirstJoinRight>();
+            string thirdTableName = GetDbTableName<TSecondJoinRight>();
+            string fourthTableName = typeof(TThirdJoinRight) != typeof(TUnsetType) ? GetDbTableName<TThirdJoinRight>() : null;
+            string fifthTableName = typeof(TFourthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFourthJoinRight>() : null;
+            string sixthTableName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFifthJoinRight>() : null;
 
             string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}"; 
-            if (thirdTableSelectClause != null)
+            if (!string.IsNullOrEmpty(thirdTableSelectClause))
             {
                 joinSelectClause += $", {thirdTableSelectClause}";
             }
-            if (fourthTableSelectClause != null)
+            if (!string.IsNullOrEmpty(fourthTableSelectClause))
             {
                 joinSelectClause += $", {fourthTableSelectClause}";
             }
-            if (fifthTableSelectClause != null)
+            if (!string.IsNullOrEmpty(fifthTableSelectClause))
             {
                 joinSelectClause += $", {fifthTableSelectClause}";
             }
-            if (sixthTableSelectClause != null)
+            if (!string.IsNullOrEmpty(sixthTableSelectClause))
             {
                 joinSelectClause += $", {sixthTableSelectClause}";
             }
@@ -252,19 +252,21 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
             builder.InnerJoin($"{secondTableName} t2 on t1.{firstLeftKeyName} = t2.{firstRightKeyName}");
-            if (thirdTableName != null)
+
+            string unsetTypeName = typeof(TUnsetType).Name;
+            if (thirdTableName != null && thirdTableName != unsetTypeName)
             {
                 builder.InnerJoin($"{thirdTableName} t3 on t1.{secondLeftKeyName} = t3.{secondRightKeyName}");
             }
-            if (fourthTableName != null)
+            if (fourthTableName != null && fourthTableName != unsetTypeName)
             {
                 builder.InnerJoin($"{fourthTableName} t4 on t1.{thirdLeftKeyName} = t4.{thirdRightKeyName}");
             }
-            if (fifthTableName != null)
+            if (fifthTableName != null && fifthTableName != unsetTypeName)
             {
                 builder.InnerJoin($"{fifthTableName} t5 on t1.{fourthLeftKeyName} = t5.{fourthRightKeyName}");
             }
-            if (sixthTableName != null)
+            if (sixthTableName != null && sixthTableName != unsetTypeName)
             {
                 builder.InnerJoin($"{sixthTableName} t6 on t1.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
             }

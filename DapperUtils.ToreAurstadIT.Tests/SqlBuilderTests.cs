@@ -78,6 +78,14 @@ namespace DapperUtils.ToreAurstadIT.Tests
         //}
 
         [Test]
+        public void InnerJoinTwoTablesWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin((Product p, Category c) => p.CategoryID == c.CategoryID);
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "1Chai1Beverages");
+        }
+
+        [Test]
         public void InnerJoinThreeTablesWithoutManualSqlReturnsExpected()
         {
             var joinedproductsandcategory = Connection.InnerJoin((Product p, Category c) => p.CategoryID == c.CategoryID,
