@@ -249,30 +249,57 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 joinSelectClause += $", {sixthTableSelectClause}";
             }
             joinSelectClause = joinSelectClause.TrimEnd().TrimEnd(',');
+
+            var registeredTableAliases = new Dictionary<string, Type>();
+            registeredTableAliases.Add("t1", typeof(TFirstJoinLeft));
+
             joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
+
+            registeredTableAliases.Add("t2", typeof(TFirstJoinRight));
             builder.InnerJoin($"{secondTableName} t2 on t1.{firstLeftKeyName} = t2.{firstRightKeyName}");
 
             string unsetTypeName = typeof(TUnsetType).Name;
             if (thirdTableName != null && thirdTableName != unsetTypeName)
             {
-                builder.InnerJoin($"{thirdTableName} t3 on t1.{secondLeftKeyName} = t3.{secondRightKeyName}");
+                registeredTableAliases.Add("t3", typeof(TSecondJoinRight));
+                string tableAliasToMatchForSecondJoin = GetTableAliasForJoin(secondJoin, registeredTableAliases);
+                builder.InnerJoin($"{thirdTableName} t3 on {tableAliasToMatchForSecondJoin}.{secondLeftKeyName} = t3.{secondRightKeyName}");
             }
             if (fourthTableName != null && fourthTableName != unsetTypeName)
             {
-                builder.InnerJoin($"{fourthTableName} t4 on t1.{thirdLeftKeyName} = t4.{thirdRightKeyName}");
+                registeredTableAliases.Add("t4", typeof(TThirdJoinRight));
+                string tableAliasToMatchForThirdJoin = GetTableAliasForJoin(thirdJoin, registeredTableAliases);
+                builder.InnerJoin($"{fourthTableName} t4 on {tableAliasToMatchForThirdJoin}.{thirdLeftKeyName} = t4.{thirdRightKeyName}");
             }
             if (fifthTableName != null && fifthTableName != unsetTypeName)
             {
-                builder.InnerJoin($"{fifthTableName} t5 on t1.{fourthLeftKeyName} = t5.{fourthRightKeyName}");
+                registeredTableAliases.Add("t5", typeof(TFourthJoinRight));
+                string tableAliasToMatchForFourthJoin = GetTableAliasForJoin(thirdJoin, registeredTableAliases);
+                builder.InnerJoin($"{fifthTableName} t5 on {tableAliasToMatchForFourthJoin}.{fourthLeftKeyName} = t5.{fourthRightKeyName}");
             }
             if (sixthTableName != null && sixthTableName != unsetTypeName)
             {
-                builder.InnerJoin($"{sixthTableName} t6 on t1.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
+                registeredTableAliases.Add("t6", typeof(TFifthJoinRight));
+                string tableAliasToMatchForFifthJoin = GetTableAliasForJoin(thirdJoin, registeredTableAliases);
+                builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForFifthJoin}.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
             }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
             return joinedResults;
+        }
+
+        private static string GetTableAliasForJoin<TJoinLeft, TJoinRight>
+            (Expression<Func<TJoinLeft, TJoinRight, bool>> join, 
+            Dictionary<string, Type> registeredTableAliases)
+        {
+            var joinKeyType = GetJoinKeyType(join, true);
+            if (!registeredTableAliases.ContainsValue(joinKeyType))
+            {
+                throw new ArgumentException($"Could not resolve table alias for given join: {join?.ToString()}. Check that the sequence of joins specified builds a valid chain among the table joins. Consider reordering joins or reduce the amount of join operations.");
+            }
+            var tableAliasKvp = registeredTableAliases.Single(x => x.Value == joinKeyType);            
+            return tableAliasKvp.Key;
         }
 
         private static string GetJoinKey<TLeftKey, TRightKey>(Expression<Func<TLeftKey, TRightKey, bool>> joinCondition, bool chooseLeftKey)
@@ -292,6 +319,30 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 }
                 var memberExpression = (MemberExpression)joinPart;
                 return memberExpression.Member.Name;
+            }
+            catch (Exception err)
+            {
+                throw new ArgumentException($"The {nameof(joinCondition)} must be a LogicalBinaryExpression, for example: (Car c, Driver d) => c.Id == d.Id. The passed in lambda does not follow this format. Error: {err}");
+            }
+        }
+
+        private static Type GetJoinKeyType<TLeftKey, TRightKey>(Expression<Func<TLeftKey, TRightKey, bool>> joinCondition, bool chooseLeftKey)
+        {
+            if (joinCondition == null)
+            {
+                return null;
+            }
+            try
+            {
+                var binaryFunc = (BinaryExpression)joinCondition.Body;
+                var joinPart = chooseLeftKey ? binaryFunc.Left : binaryFunc.Right;
+                if (joinPart.NodeType == ExpressionType.Convert)
+                {
+                    var ue = (MemberExpression)((UnaryExpression)joinPart).Operand;
+                    return ue.Member.ReflectedType;
+                }
+                var memberExpression = (MemberExpression)joinPart;
+                return memberExpression.Member.ReflectedType;
             }
             catch (Exception err)
             {

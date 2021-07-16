@@ -94,6 +94,16 @@ namespace DapperUtils.ToreAurstadIT.Tests
             Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "1Chai1Beverages1Exotic Liquids");
         }
 
+        [Test]
+        public void InnerJoinFourTablesWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin((OrderDetail od, Product p) => od.ProductID == p.ProductID,
+                (Product p, Category c) => p.CategoryID == c.CategoryID,
+                (Product p, Supplier s) => p.SupplierID == s.SupplierID);
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
+        }
+
         //[Test]
         //public void InnerJoinFourTablesWithoutManualSqlReturnsExpected()
         //{            
