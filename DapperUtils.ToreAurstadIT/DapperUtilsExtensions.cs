@@ -209,7 +209,8 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             string fourthTableSelectClause = typeof(TThirdJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TThirdJoinRight>("t4")) : null;
             string fifthTableSelectClause = typeof(TFourthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthJoinRight>("t5")) : null;
             string sixthTableSelectClause = typeof(TFifthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthJoinRight>("t6")) : null;
-           
+            string seventhTableSelectClause = typeof(TSixthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TSixthJoinRight>("t7")) : null;
+
             string firstLeftKeyName = GetJoinKey(firstJoin, true);
             string firstRightKeyName = GetJoinKey(firstJoin, false);
             string secondLeftKeyName = GetJoinKey(secondJoin, true);
@@ -222,7 +223,8 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             string fifthRightKeyName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, false) : null;
             string sixthLeftKeyName = typeof(TFifthJoinLeft) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, true) : null;
             string sixthRightKeyName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, false) : null;
-
+            string seventhLeftKeyName = typeof(TSixthJoinLeft) != typeof(TUnsetType) ? GetJoinKey(sixthJoin, true) : null;
+            string seventhRightKeyName = typeof(TSixthJoinRight) != typeof(TUnsetType) ? GetJoinKey(sixthJoin, false) : null;
 
             string firstTableName = GetDbTableName<TFirstJoinLeft>();
             string secondTableName = GetDbTableName<TFirstJoinRight>();
@@ -230,6 +232,7 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             string fourthTableName = typeof(TThirdJoinRight) != typeof(TUnsetType) ? GetDbTableName<TThirdJoinRight>() : null;
             string fifthTableName = typeof(TFourthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFourthJoinRight>() : null;
             string sixthTableName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFifthJoinRight>() : null;
+            string seventhTableName = typeof(TSixthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TSixthJoinRight>() : null;
 
             string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}"; 
             if (!string.IsNullOrEmpty(thirdTableSelectClause))
@@ -247,6 +250,10 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             if (!string.IsNullOrEmpty(sixthTableSelectClause))
             {
                 joinSelectClause += $", {sixthTableSelectClause}";
+            }
+            if (!string.IsNullOrEmpty(seventhTableSelectClause))
+            {
+                joinSelectClause += $", {seventhTableSelectClause}";
             }
             joinSelectClause = joinSelectClause.TrimEnd().TrimEnd(',');
 
@@ -283,6 +290,12 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 registeredTableAliases.Add("t6", typeof(TFifthJoinRight));
                 string tableAliasToMatchForFifthJoin = GetTableAliasForJoin(fifthJoin, registeredTableAliases);
                 builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForFifthJoin}.{fifthLeftKeyName} = t6.{fifthRightKeyName}");
+            }
+            if (seventhTableName != null && seventhTableName != unsetTypeName)
+            {
+                registeredTableAliases.Add("t7", typeof(TFifthJoinRight));
+                string tableAliasToMatchForSixthJoin = GetTableAliasForJoin(sixthJoin, registeredTableAliases);
+                builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForSixthJoin}.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
             }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
