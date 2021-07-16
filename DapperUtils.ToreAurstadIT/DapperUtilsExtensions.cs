@@ -74,66 +74,103 @@ namespace DapperUtils.ToreAurstadIT
             return connection.Query<T>(sql, parameters);
         }
 
-        /// <summary>
-        /// Inner joins the left and right tables by specified left and right key expression lambdas.
-        /// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
-        /// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="leftKey"/>
-        /// and <paramref name="rightKey"/> are compatible data types as they are used for the join.
-        /// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
-        /// just specifying the two columns to join.
-        /// </summary>
-        /// <typeparam name="TLeftTable"></typeparam>
-        /// <typeparam name="TRightTable"></typeparam>
-        /// <param name="connection"></param>
-        /// <param name="leftKey"></param>
-        /// <param name="rightKey"></param>
-        /// <returns></returns>
-        public static IEnumerable<ExpandoObject> InnerJoin<TLeftTable, TRightTable>(this IDbConnection connection, 
-            Expression<Func<TLeftTable, object>> leftKey, Expression<Func<TRightTable, object>> rightKey)
+        ///// <summary>
+        ///// Inner joins the left and right tables by specified left and right key expression lambdas.
+        ///// This uses a template builder and a shortcut to join two tables without having to specify any SQL manually
+        ///// and gives you the entire inner join result set. It is an implicit requirement that the <paramref name="leftKey"/>
+        ///// and <paramref name="rightKey"/> are compatible data types as they are used for the join.
+        ///// This method do for now not allow specifying any filtering (where-clause) or logic around the joining besides
+        ///// just specifying the two columns to join.
+        ///// </summary>
+        ///// <typeparam name="TLeftTable"></typeparam>
+        ///// <typeparam name="TRightTable"></typeparam>
+        ///// <param name="connection"></param>
+        ///// <param name="leftKey"></param>
+        ///// <param name="rightKey"></param>
+        ///// <returns></returns>
+        //public static IEnumerable<ExpandoObject> InnerJoin<TLeftTable, TRightTable>(this IDbConnection connection, 
+        //    Expression<Func<TLeftTable, object>> leftKey, Expression<Func<TRightTable, object>> rightKey)
+        //{
+        //    var builder = new SqlBuilder();
+        //    string leftTableSelectClause = string.Join(",", GetPublicPropertyNames<TLeftTable>("l"));
+        //    string rightTableSelectClause = string.Join(",", GetPublicPropertyNames<TRightTable>("r"));
+        //    string leftKeyName = GetMemberName(leftKey);
+        //    string rightKeyName = GetMemberName(rightKey); 
+        //    string leftTableName = GetDbTableName<TLeftTable>();
+        //    string rightTableName = GetDbTableName<TRightTable>(); 
+        //    string joinSelectClause = $"select {leftTableSelectClause}, {rightTableSelectClause} from {leftTableName} l /**innerjoin**/";
+        //    var selector = builder.AddTemplate(joinSelectClause);
+        //    builder.InnerJoin($"{rightTableName} r on l.{leftKeyName} = r.{rightKeyName}");
+        //    var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
+        //        .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
+        //    return joinedResults;
+        //}
+
+        public static IEnumerable<ExpandoObject> InnerJoin<
+TFirstJoinLeft, TFirstJoinRight>(this IDbConnection connection,
+Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
         {
-            var builder = new SqlBuilder();
-            string leftTableSelectClause = string.Join(",", GetPublicPropertyNames<TLeftTable>("l"));
-            string rightTableSelectClause = string.Join(",", GetPublicPropertyNames<TRightTable>("r"));
-            string leftKeyName = GetMemberName(leftKey);
-            string rightKeyName = GetMemberName(rightKey); 
-            string leftTableName = GetDbTableName<TLeftTable>();
-            string rightTableName = GetDbTableName<TRightTable>(); 
-            string joinSelectClause = $"select {leftTableSelectClause}, {rightTableSelectClause} from {leftTableName} l /**innerjoin**/";
-            var selector = builder.AddTemplate(joinSelectClause);
-            builder.InnerJoin($"{rightTableName} r on l.{leftKeyName} = r.{rightKeyName}");
-            var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
-                .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
-            return joinedResults;
+            return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TUnsetType, TUnsetType, TUnsetType, TUnsetType,
+                TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
+                firstJoin, null, null, null, null, null);
         }
 
-        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable>(this IDbConnection connection,
-          Expression<Func<TFirstTable, object>> firstKey,
-          Expression<Func<TSecondTable, object>> secondKey,
-          Expression<Func<TThirdTable, object>> thirdKey
-      )
+        public static IEnumerable<ExpandoObject> InnerJoin<
+     TFirstJoinLeft, TFirstJoinRight,
+     TSecondJoinLeft, TSecondJoinRight>(this IDbConnection connection,
+     Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+     Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin)
         {
-            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, null);
+            return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TUnsetType, TUnsetType,
+                TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
+                firstJoin, secondJoin, null, null, null, null);
         }
 
-        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable>(this IDbConnection connection,
-            Expression<Func<TFirstTable, object>> firstKey,
-            Expression<Func<TSecondTable, object>> secondKey,
-            Expression<Func<TThirdTable, object>> thirdKey,
-            Expression<Func<TFourthTable, object>> fourthKey
+        public static IEnumerable<ExpandoObject> InnerJoin<
+        TFirstJoinLeft, TFirstJoinRight,
+        TSecondJoinLeft, TSecondJoinRight,
+        TThirdJoinLeft, TThirdJoinRight>(this IDbConnection connection,
+        Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+        Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
+        Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin)
+        {
+            return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
+                TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
+                firstJoin, secondJoin, thirdJoin, null, null, null);
+        }
+
+        public static IEnumerable<ExpandoObject> InnerJoin<
+           TFirstJoinLeft, TFirstJoinRight,
+           TSecondJoinLeft, TSecondJoinRight,
+           TThirdJoinLeft, TThirdJoinRight,
+           TFourthJoinLeft, TFourthJoinRight>(this IDbConnection connection,
+           Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+           Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
+           Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
+           Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin
+   )
+        {
+            return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
+                TFourthJoinLeft, TFourthJoinRight, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
+                firstJoin, secondJoin, thirdJoin, fourthJoin, null, null);
+        }
+
+        public static IEnumerable<ExpandoObject> InnerJoin<
+                TFirstJoinLeft, TFirstJoinRight,
+                TSecondJoinLeft, TSecondJoinRight,
+                TThirdJoinLeft, TThirdJoinRight,
+                TFourthJoinLeft, TFourthJoinRight,
+                TFifthJoinLeft, TFifthJoinRight>(this IDbConnection connection,
+                Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+                Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
+                Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
+                Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin,
+                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin            
         )
         {
-            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, fourthKey, null);
-        }
-
-        public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable>(this IDbConnection connection,
-            Expression<Func<TFirstTable, object>> firstKey,
-            Expression<Func<TSecondTable, object>> secondKey,
-            Expression<Func<TThirdTable, object>> thirdKey,
-            Expression<Func<TFourthTable, object>> fourthKey,
-            Expression<Func<TFifthTable, object>> fifthKey
-        )
-        {
-            return InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TUnsetType>(connection, firstKey, secondKey, thirdKey, fourthKey, fifthKey, null);
+            return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
+                TFourthJoinLeft, TFourthJoinRight, TFifthJoinLeft, TFifthJoinRight, TUnsetType, TUnsetType>(connection,
+                firstJoin, secondJoin, thirdJoin, fourthJoin, fifthJoin, null);
         }
 
             /// <summary>
@@ -150,36 +187,55 @@ namespace DapperUtils.ToreAurstadIT
             /// <param name="firstKey"></param>
             /// <param name="secondKey"></param>
             /// <returns></returns>
-            public static IEnumerable<ExpandoObject> InnerJoin<TFirstTable, TSecondTable, TThirdTable, TFourthTable, TFifthTable, TSixthTable>(this IDbConnection connection,
-                Expression<Func<TFirstTable, object>> firstKey, 
-                Expression<Func<TSecondTable, object>> secondKey,
-                Expression<Func<TThirdTable, object>> thirdKey,
-                Expression<Func<TFourthTable, object>> fourthKey = null,
-                Expression<Func<TFifthTable, object>> fifthKey = null,
-                Expression<Func<TSixthTable, object>> sixthKey = null
+            public static IEnumerable<ExpandoObject> InnerJoin<
+                TFirstJoinLeft, TFirstJoinRight,
+                TSecondJoinLeft, TSecondJoinRight,
+                TThirdJoinLeft, TThirdJoinRight,
+                TFourthJoinLeft, TFourthJoinRight,
+                TFifthJoinLeft, TFifthJoinRight,
+                TSixthJoinLeft, TSixthJoinRight>(this IDbConnection connection,     
+                Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin = null,
+                Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin = null,
+                Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin = null,
+                Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin = null,
+                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin = null,
+                Expression<Func<TSixthJoinLeft, TSixthJoinRight, bool>> sixthJoin = null
             )
         {
             var builder = new SqlBuilder();
-            string firstTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstTable>("t1"));
-            string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondTable>("t2"));
-            string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TThirdTable>("t3"));
-            string fourthTableSelectClause = typeof(TFourthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthTable>("t4")) : null;
-            string fifthTableSelectClause = typeof(TFifthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthTable>("t5")) : null;
-            string sixthTableSelectClause = typeof(TSixthTable) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TSixthTable>("t6")) : null;
-            string firstKeyName = GetMemberName(firstKey);
-            string secondKeyName = GetMemberName(secondKey);
-            string thirdKeyName = GetMemberName(thirdKey);
-            string fourthKeyName = typeof(TFourthTable) != typeof(TUnsetType) ? GetMemberName(fourthKey) : null;
-            string fifthKeyName = typeof(TFifthTable) != typeof(TUnsetType) ? GetMemberName(fifthKey) : null;
-            string sixthKeyName = typeof(TSixthTable) != typeof(TUnsetType) ? GetMemberName(sixthKey) : null;
-            string firstTableName = GetDbTableName<TFirstTable>();
-            string secondTableName = GetDbTableName<TSecondTable>();
-            string thirdTableName = GetDbTableName<TThirdTable>();
-            string fourthTableName = typeof(TFourthTable) != typeof(TUnsetType) ? GetDbTableName<TFourthTable>() : null;
-            string fifthTableName = typeof(TFifthTable) != typeof(TUnsetType) ? GetDbTableName<TFifthTable>() : null;
-            string sixthTableName = typeof(TSixthTable) != typeof(TUnsetType) ? GetDbTableName<TSixthTable>() : null;
+            string firstTableSelectClause = string.Join(",", GetPublicPropertyNames<TFirstJoinLeft>("t1"));
+            string secondTableSelectClause = string.Join(",", GetPublicPropertyNames<TSecondJoinRight>("t2"));
+            string thirdTableSelectClause = string.Join(",", GetPublicPropertyNames<TThirdJoinRight>("t3"));
+            string fourthTableSelectClause = typeof(TFourthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFourthJoinRight>("t4")) : null;
+            string fifthTableSelectClause = typeof(TFifthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TFifthJoinRight>("t5")) : null;
+            string sixthTableSelectClause = typeof(TSixthJoinRight) != typeof(TUnsetType) ? string.Join(",", GetPublicPropertyNames<TSixthJoinRight>("t6")) : null;
+           
+            string firstLeftKeyName = GetJoinKey(firstJoin, true);
+            string firstRightKeyName = GetJoinKey(firstJoin, false);
+            string secondLeftKeyName = GetJoinKey(secondJoin, true);
+            string secondRightKeyName = GetJoinKey(secondJoin, false);
+            string thirdLeftKeyName = GetJoinKey(thirdJoin, true);
+            string thirdRightKeyName = GetJoinKey(thirdJoin, false);
+            string fourthLeftKeyName = typeof(TFourthJoinLeft) != typeof(TUnsetType) ? GetJoinKey(fourthJoin, true) : null;
+            string fourthRightKeyName = typeof(TFourthJoinRight) != typeof(TUnsetType) ? GetJoinKey(fourthJoin, false) : null;
+            string fifthLeftKeyName = typeof(TFifthJoinLeft) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, true) : null;
+            string fifthRightKeyName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, false) : null;
+            string sixthLeftKeyName = typeof(TFifthJoinLeft) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, true) : null;
+            string sixthRightKeyName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetJoinKey(fifthJoin, false) : null;
 
-            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}, {thirdTableSelectClause}"; 
+
+            string firstTableName = GetDbTableName<TFirstJoinLeft>();
+            string secondTableName = GetDbTableName<TSecondJoinRight>();
+            string thirdTableName = GetDbTableName<TThirdJoinRight>();
+            string fourthTableName = typeof(TFourthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFourthJoinRight>() : null;
+            string fifthTableName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFifthJoinRight>() : null;
+            string sixthTableName = typeof(TSixthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TSixthJoinRight>() : null;
+
+            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}"; 
+            if (thirdTableSelectClause != null)
+            {
+                joinSelectClause += $", {thirdTableSelectClause}";
+            }
             if (fourthTableSelectClause != null)
             {
                 joinSelectClause += $", {fourthTableSelectClause}";
@@ -192,25 +248,53 @@ namespace DapperUtils.ToreAurstadIT
             {
                 joinSelectClause += $", {sixthTableSelectClause}";
             }
+            joinSelectClause = joinSelectClause.TrimEnd().TrimEnd(',');
             joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
-            builder.InnerJoin($"{secondTableName} t2 on t1.{firstKeyName} = t2.{secondKeyName}");
-            builder.InnerJoin($"{thirdTableName} t3 on t1.{thirdKeyName} = t3.{thirdKeyName}");
+            builder.InnerJoin($"{secondTableName} t2 on t1.{firstLeftKeyName} = t2.{firstRightKeyName}");
+            if (thirdTableName != null)
+            {
+                builder.InnerJoin($"{thirdTableName} t3 on t1.{secondLeftKeyName} = t3.{secondRightKeyName}");
+            }
             if (fourthTableName != null)
             {
-                builder.InnerJoin($"{fourthTableName} t4 on t1.{fourthKeyName} = t4.{fourthKeyName}");
+                builder.InnerJoin($"{fourthTableName} t4 on t1.{thirdLeftKeyName} = t4.{thirdRightKeyName}");
             }
             if (fifthTableName != null)
             {
-                builder.InnerJoin($"{fifthTableName} t5 on t1.{fifthKeyName} = t5.{fifthKeyName}");
+                builder.InnerJoin($"{fifthTableName} t5 on t1.{fourthLeftKeyName} = t5.{fourthRightKeyName}");
             }
             if (sixthTableName != null)
             {
-                builder.InnerJoin($"{sixthTableName} t6 on t1.{sixthKeyName} = t6.{sixthKeyName}");
+                builder.InnerJoin($"{sixthTableName} t6 on t1.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
             }
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
             return joinedResults;
+        }
+
+        private static string GetJoinKey<TLeftKey, TRightKey>(Expression<Func<TLeftKey, TRightKey, bool>> joinCondition, bool chooseLeftKey)
+        {
+            if (joinCondition == null)
+            {
+                return null;
+            }
+            try
+            {
+                var binaryFunc = (BinaryExpression)joinCondition.Body;
+                var joinPart = chooseLeftKey ? binaryFunc.Left : binaryFunc.Right;
+                if (joinPart.NodeType == ExpressionType.Convert)
+                {
+                    var ue = (MemberExpression)((UnaryExpression)joinPart).Operand;
+                    return ue.Member.Name;
+                }
+                var memberExpression = (MemberExpression)joinPart;
+                return memberExpression.Member.Name;
+            }
+            catch (Exception err)
+            {
+                throw new ArgumentException($"The {nameof(joinCondition)} must be a LogicalBinaryExpression, for example: (Car c, Driver d) => c.Id == d.Id. The passed in lambda does not follow this format. Error: {err}");
+            }
         }
 
         /// <summary>
