@@ -104,6 +104,17 @@ namespace DapperUtils.ToreAurstadIT.Tests
             Assert.AreEqual(firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
         }
 
+        [Test]
+        public void InnerJoinFiveTablesWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin((Order o, OrderDetail od) => o.OrderID == od.OrderID,
+                (OrderDetail od, Product p) => od.ProductID == p.ProductID,
+                (Product p, Category c) => p.CategoryID == c.CategoryID,
+                (Product p, Supplier s) => p.SupplierID == s.SupplierID);
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.OrderID + firstRow.ShipName + firstRow.ProductID.ToString() + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName + firstRow.SupplierID + firstRow.CompanyName, "10248Vins et alcools Chevalier11Queso Cabrales4Dairy Products5Cooperativa de Quesos 'Las Cabras'");
+        }
+
         //[Test]
         //public void InnerJoinFourTablesWithoutManualSqlReturnsExpected()
         //{            
