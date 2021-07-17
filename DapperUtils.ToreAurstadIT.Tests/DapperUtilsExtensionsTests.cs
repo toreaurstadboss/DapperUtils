@@ -10,8 +10,9 @@ using Dapper;
 using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using FluentAssertions;
+using ToreAurstadIT.DapperUtils;
 
-namespace DapperUtils.ToreAurstadIT.Tests
+namespace ToreAurstadIT.DapperUtils.Tests
 {
     /// <summary>
     /// Note - these tests required a Northwind DB running on .\\sqlexpress or adjusts the tests to go against another data source.

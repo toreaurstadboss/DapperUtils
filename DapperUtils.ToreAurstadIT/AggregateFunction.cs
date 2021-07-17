@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DapperUtils.ToreAurstadIT
+namespace ToreAurstadIT.DapperUtils
 {
     public enum AggregateFunction
     {

@@ -9,7 +9,7 @@ using Dapper;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 
-namespace DapperUtils.ToreAurstadIT
+namespace ToreAurstadIT.DapperUtils
 {
     public static class DapperUtilsExtensions
     {
@@ -132,12 +132,13 @@ namespace DapperUtils.ToreAurstadIT
         /// </code>
         /// </example>
         public static IEnumerable<ExpandoObject> InnerJoin<
-TFirstJoinLeft, TFirstJoinRight>(this IDbConnection connection,
-Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
+          TFirstJoinLeft, TFirstJoinRight>(this IDbConnection connection,
+          Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
+          Tuple<string, Type>[] filters = null)
         {
             return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TUnsetType, TUnsetType, TUnsetType, TUnsetType,
                 TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
-                firstJoin, null, null, null, null, null);
+                firstJoin, null, null, null, null, null, filters);
         }
 
         /// <summary>
@@ -169,11 +170,12 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
      TFirstJoinLeft, TFirstJoinRight,
      TSecondJoinLeft, TSecondJoinRight>(this IDbConnection connection,
      Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
-     Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin)
+     Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
+     Tuple<string, Type>[] filters = null)
         {
             return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TUnsetType, TUnsetType,
                 TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
-                firstJoin, secondJoin, null, null, null, null);
+                firstJoin, secondJoin, null, null, null, null, filters);
         }
 
         /// <summary>
@@ -209,13 +211,13 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
         TThirdJoinLeft, TThirdJoinRight>(this IDbConnection connection,
         Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
         Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
-        Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin)
+        Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
+        Tuple<string, Type>[] filters = null)
         {
             return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
                 TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
-                firstJoin, secondJoin, thirdJoin, null, null, null);
+                firstJoin, secondJoin, thirdJoin, null, null, null, filters);
         }
-
 
         /// <summary>
         /// Inner joins five tables by specified up to four join expressions
@@ -254,12 +256,13 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
            Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
            Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
            Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
-           Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin
+           Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin,
+           Tuple<string, Type>[] filters = null
    )
         {
             return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
                 TFourthJoinLeft, TFourthJoinRight, TUnsetType, TUnsetType, TUnsetType, TUnsetType>(connection,
-                firstJoin, secondJoin, thirdJoin, fourthJoin, null, null);
+                firstJoin, secondJoin, thirdJoin, fourthJoin, null, null, filters);
         }
 
         /// <summary>
@@ -302,12 +305,13 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
                 Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
                 Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin,
-                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin            
+                Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin,
+                Tuple<string, Type>[] filters = null
         )
         {
             return InnerJoin<TFirstJoinLeft, TFirstJoinRight, TSecondJoinLeft, TSecondJoinRight, TThirdJoinLeft, TThirdJoinRight,
                 TFourthJoinLeft, TFourthJoinRight, TFifthJoinLeft, TFifthJoinRight, TUnsetType, TUnsetType>(connection,
-                firstJoin, secondJoin, thirdJoin, fourthJoin, fifthJoin, null);
+                firstJoin, secondJoin, thirdJoin, fourthJoin, fifthJoin, null, filters);
         }
 
         /// <summary>
@@ -353,7 +357,8 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
                 Expression<Func<TFourthJoinLeft, TFourthJoinRight, bool>> fourthJoin,
                 Expression<Func<TFifthJoinLeft, TFifthJoinRight, bool>> fifthJoin,
-                Expression<Func<TSixthJoinLeft, TSixthJoinRight, bool>> sixthJoin
+                Expression<Func<TSixthJoinLeft, TSixthJoinRight, bool>> sixthJoin,
+                Tuple<string, Type>[] filters = null
             )
         {
             var builder = new SqlBuilder();
@@ -414,7 +419,7 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
             var registeredTableAliases = new Dictionary<string, Type>();
             registeredTableAliases.Add("t1", typeof(TFirstJoinLeft));
 
-            joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/"; 
+            joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/ /**where**/"; 
             var selector = builder.AddTemplate(joinSelectClause);
 
             registeredTableAliases.Add("t2", typeof(TFirstJoinRight));
@@ -451,9 +456,34 @@ Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin)
                 string tableAliasToMatchForSixthJoin = GetTableAliasForJoin(sixthJoin, registeredTableAliases);
                 builder.InnerJoin($"{sixthTableName} t6 on {tableAliasToMatchForSixthJoin}.{sixthLeftKeyName} = t6.{sixthRightKeyName}");
             }
+
+            if (filters != null && filters.Any())
+            {
+                foreach (var filter in filters)
+                {
+                    if (string.IsNullOrEmpty(filter.Item1))
+                    {
+                        throw new ArgumentNullException("Provide sql for filter for join.");
+                    }
+                    string tableAliasForFilter = GetTableAliasForFilter(filter.Item2, registeredTableAliases);
+                    string whereClauseForFilter = $"{tableAliasForFilter}.{filter.Item1}";
+                    builder.Where(whereClauseForFilter);
+                }
+            }
+
             var joinedResults = connection.Query(selector.RawSql, selector.Parameters)
                 .Select(x => (ExpandoObject)DapperUtilsExtensions.ToExpandoObject(x)).ToList();
             return joinedResults;
+        }
+
+        private static string GetTableAliasForFilter(Type typeForFilter, Dictionary<string, Type> registeredTableAliases)
+        {
+            if (!registeredTableAliases.ContainsValue(typeForFilter))
+            {
+                throw new ArgumentException($"Could not resolve table alias for filter. The type for filter with missing table alias is: {typeForFilter.Name}");
+            }
+            string tableAliasForFilter = registeredTableAliases.First(x => x.Value == typeForFilter).Key;
+            return tableAliasForFilter;
         }
 
         private static string GetTableAliasForJoin<TJoinLeft, TJoinRight>

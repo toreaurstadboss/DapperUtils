@@ -10,7 +10,7 @@ To use the helper methods, add a using of the following namespace to your code f
 public extension methods of the library.
 
 ```csharp
-using DapperUtils.ToreAurstadIT;
+using ToreAurstadIT.DapperUtils;
 ```
 
 Now you can access the methods of this lib via your IDbConnection ADO.NET DB Connection instance.
@@ -21,6 +21,16 @@ The library supports helpers for joining 2-7 tables via lambda expresisions. The
 inner joins without filtering capability (i.e. all rows are fetched), but this will be included in future versions.
 If you want to fetch less columns, just make your DTOs non-wide with few columns or add the [NotMapped] attribute 
 to skip them.
+
+The columns added to the result sets of this inner join following this rule:
+<ul>
+<li>Columns in the tables the left and right part of first join included in the DTO are added always.</li>
+<li>Columns in the right table of the second join is included (specified as public properties in the DTO) if you join three tables with 2 joins.</li>
+<li>Columns in the right table of the third join is included (specified as public properties in the DTO) if you join four tables with 3 joins.</li>
+<li>Columns in the right table of the fourth join is included (specified as public properties in the DTO) if you join five tables with 4 joins.</li>
+<li>Columns in the right table of the fifth join is included (specified as public properties in the DTO) if you join sixth tables with 5 joins.</li>
+<li>Columns in the right table of the sixth join is included (specified as public properties in the DTO) if you join seven tables with 6 joins.</li>
+</ul>
 
 An example of inner joins via typed Lambda expression is one key feature of the library.
 The following integration test against Northwind DB shows how you can inner join 
@@ -51,6 +61,22 @@ The following example shows how you can join six tables via typed lambda express
 
 ```
 
+### Adding a filter to the inner join
+The following example shows how a filter can be added. Do not add a table alias, but specify the 
+type of the filter (i.e the table the filter is targeting) and the sql itself. Here, Lambda expressions are not supported, so you have to add the 
+filter manually as shown in the example. 
+
+```csharp
+        [Test]
+        public void InnerJoinTwoTablesWithFilterWithoutManualSqlReturnsExpected()
+        {
+            var joinedproductsandcategory = Connection.InnerJoin((Product p, Category c) => p.CategoryID == c.CategoryID,
+                   new Tuple<string, Type>[] { new Tuple<string, Type>("CategoryID = 4", typeof(Product)) });
+            dynamic firstRow = joinedproductsandcategory.ElementAt(0);
+            Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "11Queso Cabrales4Dairy Products");
+        }
+```
+
 # Retrieving paginated data from DB 
 
 This example shows how you can retrieve a page from a result set via the helper method *GetPage*
@@ -68,6 +94,59 @@ This example shows how you can retrieve a page from a result set via the helper 
             productIds.Should().Be("1,2,3,4,5");
         }
 
+```
+
+# Calculating aggregating values for columns 
+
+The following example shows how you can calculate aggregate values for columns with lambda syntax.
+
+
+```csharp
+        [Test]
+        public void GetStDevpReturnsExpected()
+        {
+            var stdevps = Connection.GetAggregate<Product>(p => p.UnitsInStock, AggregateFunction.Stdevp,
+                tableName: "products",
+                aliasForAggregate: "Stdevp").ToList();
+            stdevps.Count.Should().Be(1);
+            dynamic totalSum = stdevps.First();
+            Assert.IsTrue(Math.Abs(totalSum.Stdevp - 35.92f) < 0.01);
+        }
+```
+
+The following aggregate methods are supported (taken for source code extract of the lib). 
+
+```csharp
+  case AggregateFunction.Count:
+                    aggregateFunctionExpression = $"count({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Sum:
+                    aggregateFunctionExpression = $"sum({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Min:
+                    aggregateFunctionExpression = $"min({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Max:
+                    aggregateFunctionExpression = $"max({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Avg:
+                    aggregateFunctionExpression = $"avg({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Var:
+                    aggregateFunctionExpression = $"var({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Varp:
+                    aggregateFunctionExpression = $"varp({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Stdevp:
+                    aggregateFunctionExpression = $"stdevp({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.CountBig:
+                    aggregateFunctionExpression = $"count_big({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
+                case AggregateFunction.Stdev:
+                    aggregateFunctionExpression = $"stdev({aggregateColumnName ?? "*"}) as {aliasForAggregate}";
+                    break;
 ```
 
 <hr />

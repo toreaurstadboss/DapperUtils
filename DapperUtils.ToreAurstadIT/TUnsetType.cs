@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace DapperUtils.ToreAurstadIT
+namespace ToreAurstadIT.DapperUtils
 {
     /// <summary>
     /// Special type used in joins to simplify ignoring generic arguments in the join to support 3-6 joining tables

@@ -27,7 +27,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\DapperUtils.ToreAurstadIT\DapperUtils.ToreAurstadIT.csproj" />
+	  <ProjectReference Include="..\DapperUtils.ToreAurstadIT\ToreAurstadIT.DapperUtils.csproj" />
 	</ItemGroup>
 
 </Project>
