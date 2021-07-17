@@ -157,7 +157,7 @@ The following aggregate methods are supported (taken for source code extract of 
 Edit the .nuspec file and bump versions and run:
 
 ```bash 
-nuget pack
+nuget pack -Prop Configuration=Release
 ``` 
 Then upload nuget package to nuget.org again with new version.
 
