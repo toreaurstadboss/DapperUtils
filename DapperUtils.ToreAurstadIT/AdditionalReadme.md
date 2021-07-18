@@ -1,4 +1,9 @@
-﻿  
+﻿## Additional README
+
+Since Nuget only supports 8 kB length README, this Readme
+is the entire Readme documentation.
+
+  
 ### ToreAurstadIT.DapperHelpers.NetStandard
 
 This Nuget package contains assorted helper methods for Dapper.

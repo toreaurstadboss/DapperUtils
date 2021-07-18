@@ -5,11 +5,15 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="AdditionalReadme.md" />
     <None Remove="Readme.md" />
     <None Remove="toolbox.jpg" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="AdditionalReadme.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="images\toolbox.jpg">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
