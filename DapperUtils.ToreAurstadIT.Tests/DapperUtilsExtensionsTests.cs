@@ -186,7 +186,7 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
-        public async Task InsertManyPerformsExpected()
+        public async Task InsertManyAndRemoveAgainPerformsExpected()
         {
             var product = new Product
             {
@@ -217,6 +217,12 @@ namespace ToreAurstadIT.DapperUtils.Tests
             var productIds = await Connection.InsertMany(products);
             productIds.Cast<int>().Count().Should().Be(2, "Expected to insert two rows into the DB.");
             productIds.Cast<int>().All(p => p > 0).Should().Be(true, "Expected to insert two rows into the DB with non-zero ids");
+
+            foreach (var productId in productIds.Cast<int>())
+            {
+                var productDeleted = Connection.Query<Product>($"select * from Products where ProductID = {productId}").First();
+                await Connection.Delete(productDeleted);
+            }
         }
 
         [Test]
