@@ -10,6 +10,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.SqlClient;
+using System.Transactions;
 
 namespace ToreAurstadIT.DapperUtils
 {
@@ -783,17 +785,26 @@ namespace ToreAurstadIT.DapperUtils
 
         /// <summary>
         /// Inserts multiple rows into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
-        /// with a key of type int (i.e. IDENTITY columns usually). If you want to support tables with key of type
-        /// uniqueidentifier (Guid), use the parameter <paramref name="isKeyOfTypeGuid"/> set to true (defaults to false).
+        /// with a key of type int or uniqueIdentifier (i.e. IDENTITY columns usually). Note ! Only max 1000 rows can be added at a time. Chunk your data when calling this method!
+        /// The return result may contain a collection of ints or guids for the newly inserted rows.
+        /// Compound keyed items will only return the first key of each new row as this not an edge-case, but not properly supported.
+        /// Only items with one column as the key will be supported generally. 
+        /// Make sure you declare the POCO of type <typeparamref name="TTable"/> with a column with the [Key] attribute.
+        /// Also specify [DatabaseGeneratedOption] set to Identity or Computed to work properly, or else you must
+        /// prepare the new key in forehand before the insert (DatabaseGeneratedOption set to None case).
         /// The method will try to set the newly generated id also on the first keyed column found. 
         /// </summary>
         /// <typeparam name="TTable"></typeparam>
         /// <param name="connection"></param>
         /// <param name="rowsToAdd"></param>
         /// <returns>The updated key of type object, which can either be an int or a Guid of the types of keys supported by this method. Check the type via reflection before casting it at the receiving end.</returns>
-        public static async Task<IEnumerable<object>> InsertMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToAdd,
-            bool isKeyOfTypeGuid = false)
+        public static async Task<IEnumerable<object>> InsertMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToAdd)
         {
+            if (rowsToAdd.Count() > 1000)
+            {
+                throw new ArgumentException("Max 1000 rows may be added at a time due to DB limitations on INSERT batch. Instead partition your data before calling this method as chunking by the method is not implemented yet.");
+            }
+
             var rowsToAddList = rowsToAdd.ToList();
 
             var dynamicParameters = new DynamicParameters();
@@ -848,41 +859,49 @@ namespace ToreAurstadIT.DapperUtils
 
             columnIndex = 0;
             int itemIndex = 0;
-            List<string> values = new List<string>();
 
-            foreach (var item in rowsToAdd)
+
+            var dynamicParametersForItems = rowsToAdd.Select(item =>
             {
-                StringBuilder valuesSb = new StringBuilder();
-                columnIndex = 0;
-                if (itemIndex == 0)
                 {
-                    valuesSb.Append("(");
-                }
-                foreach (var column in columns)
-                {
-                    valuesSb.Append($"@{column.Key}{itemIndex}");
-                    if (columnIndex < columnCount - 1)
+                    columnIndex = 0;
+                    var tempParams = new DynamicParameters();
+                    foreach (var column in columns)
                     {
-                        valuesSb.Append(",");
+                        tempParams.Add($"@{column.Key}", column.Value.GetValue(item, null));
+                        columnIndex++;
                     }
-                    dynamicParameters.Add($"@{column.Key}", column.Value.GetValue(item, null));
-                    columnIndex++;
-                }
-                if (itemIndex == rowsToAdd.Count() - 1)
-                {
-                    valuesSb.Append(")");
-                }
 
-                values.Add(valuesSb.ToString());
-                itemIndex++;
-            }
+                    itemIndex++;
+
+                    return tempParams;
+
+                }
+            }); 
+            
  
             sb.AppendLine($"{Environment.NewLine}VALUES ({(string.Join(",", columns.Select(c => $"@{c.Key}").ToArray()))})");
             
             string sql = sb.ToString();
 
-            var addedIds = await connection.QueryAsync<List<object>>(sql, dynamicParameters);
-            return addedIds;
+            List<object> idsAfterInsertionList = new List<object>();
+
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                foreach (var dynamicParametersForItem in dynamicParametersForItems)
+                {
+                    var idsAfterInsertion = (await connection.QueryAsync<object>(sql, dynamicParametersForItem)).ToList();
+                    if (idsAfterInsertion != null && idsAfterInsertion.Any())
+                    {
+                        var idAfterInsertionDict = (IDictionary<string, object>) ToExpandoObject(idsAfterInsertion.First());
+                        string firstColumnKey = columnKeys.Select(c => c.Key).First();
+                        object idAfterInsertionValue = idAfterInsertionDict[firstColumnKey];
+                        idsAfterInsertionList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+                    }
+                }
+            }
+           
+            return idsAfterInsertionList;
         }
 
         /// <summary>

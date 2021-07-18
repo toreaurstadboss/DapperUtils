@@ -215,7 +215,8 @@ namespace ToreAurstadIT.DapperUtils.Tests
 
             var products = new List<Product> { product, anotherProduct };
             var productIds = await Connection.InsertMany(products);
-
+            productIds.Cast<int>().Count().Should().Be(2, "Expected to insert two rows into the DB.");
+            productIds.Cast<int>().All(p => p > 0).Should().Be(true, "Expected to insert two rows into the DB with non-zero ids");
         }
 
         [Test]
