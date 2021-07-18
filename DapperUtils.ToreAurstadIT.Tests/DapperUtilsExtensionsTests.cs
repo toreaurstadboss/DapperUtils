@@ -186,6 +186,39 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
+        public async Task InsertManyPerformsExpected()
+        {
+            var product = new Product
+            {
+                ProductName = "Misvaerost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "300 g",
+                UnitPrice = 2.70M,
+                UnitsInStock = 130,
+                UnitsOnOrder = 0,
+                ReorderLevel = 20,
+                Discontinued = false
+            };
+            var anotherProduct = new Product
+            {
+                ProductName = "Jarslbergost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "170 g",
+                UnitPrice = 2.80M,
+                UnitsInStock = 70,
+                UnitsOnOrder = 0,
+                ReorderLevel = 10,
+                Discontinued = false
+            };
+
+            var products = new List<Product> { product, anotherProduct };
+            var productIds = await Connection.InsertMany(products);
+
+        }
+
+        [Test]
         public async Task InsertAndUpdateAndDeletePerformsExpected()
         {
             var product = new Product

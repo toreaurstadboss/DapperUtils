@@ -782,6 +782,110 @@ namespace ToreAurstadIT.DapperUtils
         }
 
         /// <summary>
+        /// Inserts multiple rows into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
+        /// with a key of type int (i.e. IDENTITY columns usually). If you want to support tables with key of type
+        /// uniqueidentifier (Guid), use the parameter <paramref name="isKeyOfTypeGuid"/> set to true (defaults to false).
+        /// The method will try to set the newly generated id also on the first keyed column found. 
+        /// </summary>
+        /// <typeparam name="TTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="rowsToAdd"></param>
+        /// <returns>The updated key of type object, which can either be an int or a Guid of the types of keys supported by this method. Check the type via reflection before casting it at the receiving end.</returns>
+        public static async Task<IEnumerable<object>> InsertMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToAdd,
+            bool isKeyOfTypeGuid = false)
+        {
+            var rowsToAddList = rowsToAdd.ToList();
+
+            var dynamicParameters = new DynamicParameters();
+
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnKeys = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
+
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"INSERT INTO {tableName}");
+            int columnIndex = 0;
+            int columnCount = columns.Count;
+
+            if (columnCount < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns which are detected for the insert operation. Adjust your columns and table POCO class first. Aborting insert and throwing error");
+            }
+
+            foreach (var column in columns)
+            {
+                if (columnIndex == 0)
+                {
+                    sb.Append("(");
+                }
+                else
+                {
+                    sb.Append(",");
+                }
+                sb.AppendLine($"{column.Key}");
+
+                if (columnIndex == columnCount - 1)
+                {
+                    sb.AppendLine(")");
+                }
+                columnIndex++;
+            }
+            sb.Append($"OUTPUT ");
+            int columnKeyIndex = 0;
+            foreach (var columnKey in columnKeys)
+            {
+                if (columnKeyIndex > 0)
+                {
+                    sb.Append(",INSERTED");
+                }
+                else
+                {
+                    sb.Append("INSERTED");
+                }
+                sb.Append($".{columnKey.Key}");
+                columnKeyIndex++;
+            }
+
+            columnIndex = 0;
+            int itemIndex = 0;
+            List<string> values = new List<string>();
+
+            foreach (var item in rowsToAdd)
+            {
+                StringBuilder valuesSb = new StringBuilder();
+                columnIndex = 0;
+                if (itemIndex == 0)
+                {
+                    valuesSb.Append("(");
+                }
+                foreach (var column in columns)
+                {
+                    valuesSb.Append($"@{column.Key}{itemIndex}");
+                    if (columnIndex < columnCount - 1)
+                    {
+                        valuesSb.Append(",");
+                    }
+                    dynamicParameters.Add($"@{column.Key}", column.Value.GetValue(item, null));
+                    columnIndex++;
+                }
+                if (itemIndex == rowsToAdd.Count() - 1)
+                {
+                    valuesSb.Append(")");
+                }
+
+                values.Add(valuesSb.ToString());
+                itemIndex++;
+            }
+ 
+            sb.AppendLine($"{Environment.NewLine}VALUES ({(string.Join(",", columns.Select(c => $"@{c.Key}").ToArray()))})");
+            
+            string sql = sb.ToString();
+
+            var addedIds = await connection.QueryAsync<List<object>>(sql, dynamicParameters);
+            return addedIds;
+        }
+
+        /// <summary>
         /// Inserts a row into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
         /// with a key of type int (i.e. IDENTITY columns usually). If you want to support tables with key of type
         /// uniqueidentifier (Guid), use the parameter <paramref name="isKeyOfTypeGuid"/> set to true (defaults to false).
