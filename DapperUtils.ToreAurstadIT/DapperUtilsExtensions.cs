@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 using Dapper;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace ToreAurstadIT.DapperUtils
 {
@@ -48,7 +50,6 @@ namespace ToreAurstadIT.DapperUtils
                 sql += $" OFFSET @Skip ROWS FETCH NEXT @Next ROWS ONLY";
                 return connection.ParameterizedQuery<T>(sql, new Dictionary<string, object> { { "@Skip", skip }, { "@Next", pageSize } });
             }
-
         }
 
         public static IEnumerable<T> ParameterizedQuery<T>(this IDbConnection connection, string sql,
@@ -695,6 +696,61 @@ namespace ToreAurstadIT.DapperUtils
                     break;
             }
             return $"{aggregateFunctionExpression}{aggregateColumnSuffix}";
+        }
+
+        public static async Task<int> Insert<TTable>(this IDbConnection connection, TTable rowToAdd)
+        {
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"INSERT INTO {tableName}");
+            int columnIndex = 0;
+            int columnCount = columns.Count;
+
+            if (columnCount < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns which are detected for the insert operation. Adjust your columns and table POCO class first. Aborting insert and throwing error");
+            }
+
+            foreach (var column in columns)
+            {
+                if (columnIndex == 0)
+                {
+                    sb.Append("(");
+                }
+                else {
+                    sb.Append(",");
+                }
+                sb.AppendLine($"{column.Key}");
+
+                if (columnIndex == columnCount-1)
+                {
+                    sb.AppendLine(")");
+                }
+                columnIndex++;
+            }
+            columnIndex = 0;
+            foreach (var column in columns)
+            {
+                if (columnIndex == 0)
+                {
+                    sb.AppendLine("VALUES (");
+                }
+                else
+                {
+                    sb.Append(",");
+                }
+                sb.AppendLine($"@{column.Key}");
+
+                if (columnIndex == columnCount-1)
+                {
+                    sb.AppendLine(");");
+                }
+                columnIndex++;
+            }
+            sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS INT)");
+            string sql = sb.ToString();
+            return await connection.ExecuteScalarAsync<int>(sql, rowToAdd);
         }
 
         public static IEnumerable<ExpandoObject> ParameterizedQuery(this IDbConnection connection, string sql,

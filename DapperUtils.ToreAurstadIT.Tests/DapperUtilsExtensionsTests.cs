@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using FluentAssertions;
 using ToreAurstadIT.DapperUtils;
+using System.Threading.Tasks;
 
 namespace ToreAurstadIT.DapperUtils.Tests
 {
@@ -182,6 +183,18 @@ namespace ToreAurstadIT.DapperUtils.Tests
             Assert.AreEqual(((IDictionary<string, object>)products.First())["ProductID"], 75);
             dynamic firstProduct = products.First(); 
             Assert.AreEqual(firstProduct.ProductID, 75);
+        }
+
+        [Test]
+        public async Task InsertReturnsExpected()
+        {
+            var product = new Product
+            {
+                ProductName = "Misvaerost", SupplierID = 15, CategoryID = 4, QuantityPerUnit = "300 g", UnitPrice = 2.70M,
+                UnitsInStock = 130, UnitsOnOrder = 0, ReorderLevel = 20, Discontinued = false
+            };
+            int productId = await Connection.Insert(product);
+            productId.Should().BeGreaterThan(0, "Expected that the product is inserted into Products table and got a calculated product id from DB to signal a successful insert into the DB table");
         }
 
         private static IConfigurationRoot SetupConfigurationFile()
