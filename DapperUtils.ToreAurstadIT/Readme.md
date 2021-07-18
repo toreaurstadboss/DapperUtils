@@ -76,8 +76,65 @@ filter manually as shown in the example.
             Assert.AreEqual(firstRow.ProductID + firstRow.ProductName + firstRow.CategoryID + firstRow.CategoryName, "11Queso Cabrales4Dairy Products");
         }
 ```
+ 
+## Inserting a row into a table with generic helper method
+The following example shows how a row can be inserted to a table with generic helper method.
+The columns that goes into the insert statement are the public properties. It is possible to 
+exclude columns whose values are computed by specifying the [Key] attribute and further specifying 
+the [DatabaseGenerated] attribute correctly. For example:
 
-# Retrieving paginated data from DB 
+Given this POCO - Products for Northwind DB: 
+```csharp 
+[Table("Products")]
+	public class Product
+    {
+        [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int ProductID { get; set; }
+        public string ProductName { get; set; }
+        public int? SupplierID { get; set; }
+        public int? CategoryID { get; set; }
+        public string QuantityPerUnit { get; set; }
+        public decimal? UnitPrice { get; set; }
+        public short? UnitsInStock { get; set; }
+        public short? UnitsOnOrder { get; set; }
+        public short? ReorderLevel { get; set; }
+        public bool? Discontinued { get; set; }
+        [NotMapped]
+        public Category Category { get; set; }
+    }
+```
+
+We see that the Category properties is [NotMapped] and is to be skipped for the insert statement.
+Also, the column ProductID is both a Key and the [DatabaseGenerated] attribute is set to Identity here and 
+not None, so the DB will calculate the value when insert is done. You can also use the Computed enum value here for same attribute.
+All public properties that is not be skipped either via [NotMapped] or that they are "keyed" as mentioned above,
+will be included into an insert statement. One Insert row is done with this method.
+
+The insert method is easy to use:
+
+```csharp
+   [Test]
+   public async Task InsertReturnsExpected()
+   {
+            var product = new Product
+            {
+                ProductName = "Misvaerost", SupplierID = 15, CategoryID = 4, QuantityPerUnit = "300 g", UnitPrice = 2.70M,
+                UnitsInStock = 130, UnitsOnOrder = 0, ReorderLevel = 20, Discontinued = false
+            };
+            int productId = await Connection.Insert(product);
+            productId.Should().BeGreaterThan(0, "Expected that the product is inserted into Products table and got a calculated product id from DB to signal a successful insert into the DB table");
+   }
+```
+
+The insert method is passed an instance of the TTAble table type which will be the new row to be added.
+Note that this method is asynchronous and returns the ID value of this insert operation.
+
+Note this Special case: This method will not return any value in case all your columns are non-calculated, i.e. the Primary key has DatabaseGenerated Options equal to None.
+Other than that, await this insert method and get the ID of the inserted row to look up the row later if desired.
+
+
+## Retrieving paginated data from DB 
 
 This example shows how you can retrieve a page from a result set via the helper method *GetPage*
 
@@ -157,7 +214,7 @@ The following aggregate methods are supported (taken for source code extract of 
 Edit the .nuspec file and bump versions and run:
 
 ```bash 
-nuget pack
+nuget pack -Prop Configuration=Release
 ``` 
 Then upload nuget package to nuget.org again with new version.
 

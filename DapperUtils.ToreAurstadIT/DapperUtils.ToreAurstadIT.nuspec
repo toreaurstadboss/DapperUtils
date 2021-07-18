@@ -2,7 +2,7 @@
 <package >
 	<metadata>
 		<id>ToreAurstadIt.DapperHelpers.NetStandard</id>
-		<version>1.2.0</version>
+		<version>1.3.0</version>
 		<title>ToreAurstadIt.DapperHelpers.NetStandard</title>
 		<authors>Tore Aurstad IT</authors>
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>
