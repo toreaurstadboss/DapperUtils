@@ -15,6 +15,12 @@ namespace ToreAurstadIT.DapperUtils
     public static class ReflectionHelper
     {
 
+        public static Dictionary<string, PropertyInfo> GetPublicPropertiesWithKeyAttribute<TTable>()
+        {
+            return typeof(TTable).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttributes(typeof(KeyAttribute), true).Any()).ToDictionary(x => GetColumnName(x), x => x);
+        }
+
         /// <summary>
         /// Returns the properties and their column names for a given <typeparamref name="TTable"/> table via public properties.
         /// If a property is marked with [NotMapped] attribute, it is skipped if not the <paramref name="includePropertiesMarkedAsNotMapped"/>

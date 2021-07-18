@@ -698,7 +698,65 @@ namespace ToreAurstadIT.DapperUtils
             return $"{aggregateFunctionExpression}{aggregateColumnSuffix}";
         }
 
-        public static async Task<int> Insert<TTable>(this IDbConnection connection, TTable rowToAdd)
+        public static async Task Update<TTable>(this IDbConnection connection, TTable rowToUpdate)
+        {
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnsWithKeys = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: true)
+                .Where(c => !(columns.Select(x => x.Key).Contains(c.Key)));
+
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"UPDATE {tableName}");
+            int columnIndex = 0;
+            int columnCount = columns.Count;
+
+            if (columnCount < 1 || columnsWithKeys.Count() < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns or keyed columns which are detected for the update operation. Adjust your columns and table POCO class first. Aborting update and throwing error");
+            }
+                      
+            columnIndex = 0;
+            foreach (var column in columns)
+            {
+                if (columnIndex == 0)
+                {
+                    sb.AppendLine(" SET ");
+                }
+                sb.AppendLine($"{column.Key} = @{column.Key}");
+                if (columnIndex < columnCount - 1)
+                {
+                    sb.Append(",");
+                }
+
+                if (columnIndex == columnCount - 1)
+                {
+                    sb.Append($"{Environment.NewLine}WHERE ");
+                    foreach (var columnkey in columnsWithKeys){
+                        var columnValue = columnkey.Value.GetValue(rowToUpdate, null);
+                        if (columnValue != null)
+                        {
+                            sb.Append($"{columnkey.Key} = @{columnkey.Key}");
+                        }
+                    }
+                }
+                columnIndex++;
+            }
+            string sql = sb.ToString();
+            await connection.ExecuteScalarAsync(sql, rowToUpdate);
+        }
+
+        /// <summary>
+        /// Inserts a row into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
+        /// with a key of type int (i.e. IDENTITY columns usually). If you want to support tables with key of type
+        /// uniqueidentifier (Guid), use the parameter <paramref name="isKeyOfTypeGuid"/> set to true (defaults to false).
+        /// The method will try to set the newly generated id also on the first keyed column found. 
+        /// </summary>
+        /// <typeparam name="TTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="rowToAdd"></param>
+        /// <returns>The updated key of type object, which can either be an int or a Guid of the types of keys supported by this method. Check the type via reflection before casting it at the receiving end.</returns>
+        public static async Task<object> Insert<TTable>(this IDbConnection connection, TTable rowToAdd,
+            bool isKeyOfTypeGuid = false)
         {
             var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
             var sb = new StringBuilder();
@@ -748,9 +806,38 @@ namespace ToreAurstadIT.DapperUtils
                 }
                 columnIndex++;
             }
-            sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS INT)");
+            if (isKeyOfTypeGuid)
+            {
+                sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS UNIQUEIDENTIFIER)");
+            }
+            else
+            {
+                sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS INT)");
+            }        
             string sql = sb.ToString();
-            return await connection.ExecuteScalarAsync<int>(sql, rowToAdd);
+            var keyedColumns = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
+
+            object updatedId = null; 
+            try
+            {
+                if (!isKeyOfTypeGuid)
+                {
+                    updatedId = await connection.ExecuteScalarAsync<int>(sql, rowToAdd);
+                }
+                else
+                {
+                    updatedId = await connection.ExecuteScalarAsync<Guid>(sql, rowToAdd);
+                }
+                if (keyedColumns.Count() == 1)
+                {
+                    keyedColumns.First().Value.SetValue(rowToAdd, updatedId);
+                }
+            }
+            catch (Exception)
+            {
+
+            }
+            return updatedId;
         }
 
         public static IEnumerable<ExpandoObject> ParameterizedQuery(this IDbConnection connection, string sql,

@@ -186,15 +186,23 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
-        public async Task InsertReturnsExpected()
+        public async Task InsertAndUpdatePerformsExpected()
         {
             var product = new Product
             {
                 ProductName = "Misvaerost", SupplierID = 15, CategoryID = 4, QuantityPerUnit = "300 g", UnitPrice = 2.70M,
                 UnitsInStock = 130, UnitsOnOrder = 0, ReorderLevel = 20, Discontinued = false
             };
-            int productId = await Connection.Insert(product);
+            int productId = (int) await Connection.Insert(product);
             productId.Should().BeGreaterThan(0, "Expected that the product is inserted into Products table and got a calculated product id from DB to signal a successful insert into the DB table");
+
+            product.UnitPrice = 3.70M;
+            product.UnitsInStock = 120;
+
+            await Connection.Update(product);
+            var productUpdated = Connection.Query<Product>($"select * from Products where ProductID = {product.ProductID}").Single();
+            productUpdated.UnitPrice.Should().Be(3.70M);
+            productUpdated.UnitsInStock.Should().Be(120);
         }
 
         private static IConfigurationRoot SetupConfigurationFile()
