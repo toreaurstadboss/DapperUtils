@@ -698,6 +698,42 @@ namespace ToreAurstadIT.DapperUtils
             return $"{aggregateFunctionExpression}{aggregateColumnSuffix}";
         }
 
+        public static async Task Delete<TTable>(this IDbConnection connection, TTable rowToDelete)
+        {
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnsWithKeys = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: true)
+                .Where(c => !(columns.Select(x => x.Key).Contains(c.Key)));
+
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"DELETE {tableName}");
+            int columnIndex = 0;
+            int columnCount = columns.Count;
+
+            if (columnCount < 1 || columnsWithKeys.Count() < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns or keyed columns which are detected for the delete operation. Adjust your columns and table POCO class first. Aborting delete and throwing error");
+            }
+
+            columnIndex = 0;
+            foreach (var column in columnsWithKeys)
+            {
+                if (columnIndex == 0)
+                {
+                    sb.AppendLine(" WHERE ");
+                }
+                sb.AppendLine($"{column.Key} = @{column.Key}");
+                if (columnIndex < columnCount - 1 && columnIndex > 0 && columnsWithKeys.Count() > 1)
+                {
+                    sb.Append(" AND ");
+                }
+             
+                columnIndex++;
+            }
+            string sql = sb.ToString();
+            await connection.ExecuteScalarAsync(sql, rowToDelete);
+        }
+
         public static async Task Update<TTable>(this IDbConnection connection, TTable rowToUpdate)
         {
             var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);

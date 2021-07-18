@@ -186,7 +186,7 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
-        public async Task InsertAndUpdatePerformsExpected()
+        public async Task InsertAndUpdateAndDeletePerformsExpected()
         {
             var product = new Product
             {
@@ -203,6 +203,9 @@ namespace ToreAurstadIT.DapperUtils.Tests
             var productUpdated = Connection.Query<Product>($"select * from Products where ProductID = {product.ProductID}").Single();
             productUpdated.UnitPrice.Should().Be(3.70M);
             productUpdated.UnitsInStock.Should().Be(120);
+            await Connection.Delete(product);
+            var productDeleted = Connection.Query<Product>($"select * from Products where ProductID = {product.ProductID}");
+            productDeleted.Should().BeEmpty("Expected that the newly created Product which was inserted and then updated is now deleted from DB.");
         }
 
         private static IConfigurationRoot SetupConfigurationFile()
