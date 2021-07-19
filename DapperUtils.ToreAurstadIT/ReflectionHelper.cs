@@ -50,7 +50,7 @@ namespace ToreAurstadIT.DapperUtils
             return databaseGenerated != null && databaseGenerated.DatabaseGeneratedOption == dbOption;
         }
 
-        private static string GetColumnName(PropertyInfo p) => p.GetCustomAttribute<ColumnAttribute>()?.Name ?? p.Name;        
+        public static string GetColumnName(PropertyInfo p) => p.GetCustomAttribute<ColumnAttribute>()?.Name ?? p.Name;        
 
         private static bool HasAttributeOfType<T>(PropertyInfo p)
         {

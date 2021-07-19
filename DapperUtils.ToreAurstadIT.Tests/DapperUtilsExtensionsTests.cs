@@ -226,6 +226,57 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
+        public async Task InsertManyAndUpdateManyRemoveAgainPerformsExpected()
+        {
+            var product = new Product
+            {
+                ProductName = "Misvaerost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "300 g",
+                UnitPrice = 2.70M,
+                UnitsInStock = 130,
+                UnitsOnOrder = 0,
+                ReorderLevel = 20,
+                Discontinued = false
+            };
+            var anotherProduct = new Product
+            {
+                ProductName = "Jarslbergost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "170 g",
+                UnitPrice = 2.80M,
+                UnitsInStock = 70,
+                UnitsOnOrder = 0,
+                ReorderLevel = 10,
+                Discontinued = false
+            };
+
+            var products = new List<Product> { product, anotherProduct };
+            var productIds = await Connection.InsertMany(products);
+            productIds.Cast<int>().Count().Should().Be(2, "Expected to insert two rows into the DB.");
+            productIds.Cast<int>().All(p => p > 0).Should().Be(true, "Expected to insert two rows into the DB with non-zero ids");
+
+            var updatePropertyBag = new Dictionary<string, object>
+            {
+                { "UnitPrice", 130 },
+                { "UnitsInStock", 110 }
+            };
+
+            products[0].ProductID = productIds.Cast<int>().ElementAt(0);
+            products[1].ProductID = productIds.Cast<int>().ElementAt(1);
+
+            var updatedProductsIds = await Connection.UpdateMany(products, updatePropertyBag);
+
+            foreach (var productId in productIds.Cast<int>())
+            {
+                var productDeleted = Connection.Query<Product>($"select * from Products where ProductID = {productId}").First();
+                await Connection.Delete(productDeleted);
+            }
+        }
+
+        [Test]
         public async Task InsertAndUpdateAndDeletePerformsExpected()
         {
             var product = new Product

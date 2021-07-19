@@ -354,7 +354,7 @@ namespace ToreAurstadIT.DapperUtils
                 TThirdJoinLeft, TThirdJoinRight,
                 TFourthJoinLeft, TFourthJoinRight,
                 TFifthJoinLeft, TFifthJoinRight,
-                TSixthJoinLeft, TSixthJoinRight>(this IDbConnection connection,     
+                TSixthJoinLeft, TSixthJoinRight>(this IDbConnection connection,
                 Expression<Func<TFirstJoinLeft, TFirstJoinRight, bool>> firstJoin,
                 Expression<Func<TSecondJoinLeft, TSecondJoinRight, bool>> secondJoin,
                 Expression<Func<TThirdJoinLeft, TThirdJoinRight, bool>> thirdJoin,
@@ -396,7 +396,7 @@ namespace ToreAurstadIT.DapperUtils
             string sixthTableName = typeof(TFifthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TFifthJoinRight>() : null;
             string seventhTableName = typeof(TSixthJoinRight) != typeof(TUnsetType) ? GetDbTableName<TSixthJoinRight>() : null;
 
-            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}"; 
+            string joinSelectClause = $"select {firstTableSelectClause}, {secondTableSelectClause}";
             if (!string.IsNullOrEmpty(thirdTableSelectClause))
             {
                 joinSelectClause += $", {thirdTableSelectClause}";
@@ -422,7 +422,7 @@ namespace ToreAurstadIT.DapperUtils
             var registeredTableAliases = new Dictionary<string, Type>();
             registeredTableAliases.Add("t1", typeof(TFirstJoinLeft));
 
-            joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/ /**where**/"; 
+            joinSelectClause += $" from {firstTableName} t1 /**innerjoin**/ /**where**/";
             var selector = builder.AddTemplate(joinSelectClause);
 
             registeredTableAliases.Add("t2", typeof(TFirstJoinRight));
@@ -490,7 +490,7 @@ namespace ToreAurstadIT.DapperUtils
         }
 
         private static string GetTableAliasForJoin<TJoinLeft, TJoinRight>
-            (Expression<Func<TJoinLeft, TJoinRight, bool>> join, 
+            (Expression<Func<TJoinLeft, TJoinRight, bool>> join,
             Dictionary<string, Type> registeredTableAliases)
         {
             var joinKeyType = GetJoinKeyType(join, true);
@@ -498,7 +498,7 @@ namespace ToreAurstadIT.DapperUtils
             {
                 throw new ArgumentException($"Could not resolve table alias for given join: {join?.ToString()}. Check that the sequence of joins specified builds a valid chain among the table joins. Consider reordering joins or reduce the amount of join operations.");
             }
-            var tableAliasKvp = registeredTableAliases.Single(x => x.Value == joinKeyType);            
+            var tableAliasKvp = registeredTableAliases.Single(x => x.Value == joinKeyType);
             return tableAliasKvp.Key;
         }
 
@@ -653,7 +653,7 @@ namespace ToreAurstadIT.DapperUtils
             {
                 sql += $"{Environment.NewLine}group by {groupingColumnsJoined}";
             }
-            var results = connection.Query(sql).Select(x => (ExpandoObject) ToExpandoObject(x));
+            var results = connection.Query(sql).Select(x => (ExpandoObject)ToExpandoObject(x));
             return results;
         }
 
@@ -729,7 +729,7 @@ namespace ToreAurstadIT.DapperUtils
                 {
                     sb.Append(" AND ");
                 }
-             
+
                 columnIndex++;
             }
             string sql = sb.ToString();
@@ -752,7 +752,7 @@ namespace ToreAurstadIT.DapperUtils
             {
                 throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns or keyed columns which are detected for the update operation. Adjust your columns and table POCO class first. Aborting update and throwing error");
             }
-                      
+
             columnIndex = 0;
             foreach (var column in columns)
             {
@@ -769,7 +769,7 @@ namespace ToreAurstadIT.DapperUtils
                 if (columnIndex == columnCount - 1)
                 {
                     sb.Append($"{Environment.NewLine}WHERE ");
-                    foreach (var columnkey in columnsWithKeys){
+                    foreach (var columnkey in columnsWithKeys) {
                         var columnValue = columnkey.Value.GetValue(rowToUpdate, null);
                         if (columnValue != null)
                         {
@@ -782,6 +782,168 @@ namespace ToreAurstadIT.DapperUtils
             string sql = sb.ToString();
             await connection.ExecuteScalarAsync(sql, rowToUpdate);
         }
+
+        /// <summary>
+        /// Updates multiple rows into a type of type <typeparamref name="TTable"/>. 
+        /// Note ! This only works for tables
+        /// with a key of type int or uniqueIdentifier (i.e. IDENTITY columns usually). Note ! Only max 1000 rows can be added at a time. Chunk your data when calling this method!
+        /// The return result may contain a collection of ints or guids for the newly inserted rows.
+        /// Compound keyed items will only return the first key of each new row as this not an edge-case, but not properly supported.
+        /// Only items with one column as the key will be supported generally. 
+        /// Make sure you declare the POCO of type <typeparamref name="TTable"/> with a column with the [Key] attribute.
+        /// Also specify [DatabaseGeneratedOption] set to Identity or Computed to work properly, or else you must
+        /// prepare the new key in forehand before the insert (DatabaseGeneratedOption set to None case).
+        /// The method will try to set the newly generated id also on the first keyed column found. 
+        /// </summary>
+        /// <typeparam name="TTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="rowsToUpdate"></param>
+        /// <param name="propertiesToSet">Properties to set</param>
+        /// <returns>The updated key of type object, which can either be an int or a Guid of the types of keys supported by this method. Check the type via reflection before casting it at the receiving end.</returns>
+        public static async Task<IEnumerable<object>> UpdateMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToUpdate,
+            IDictionary<string, object> propertiesToSet)
+        {
+
+            if (rowsToUpdate.Count() > 1000)
+            {
+                throw new ArgumentException("Max 1000 rows may be added at a time due to DB limitations on INSERT batch. Instead partition your data before calling this method as chunking by the method is not implemented yet.");
+            }
+
+            if (rowsToUpdate.Count() < 1)
+            {
+                throw new ArgumentException("At least one row must be passed to this method.");
+            }
+
+            var rowsToUpdateList = rowsToUpdate.ToList();
+
+            var dynamicParameters = new DynamicParameters();
+
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnKeys = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
+
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"UPDATE {tableName}{Environment.NewLine} SET ");
+            int columnIndex = 0;
+            int columnCount = columns.Count;
+
+            if (columnCount < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns which are detected for the insert operation. Adjust your columns and table POCO class first. Aborting insert and throwing error");
+            }
+
+            foreach (var property in propertiesToSet)
+            {
+                if (new Type[] { typeof(DateTime), typeof(Guid), typeof(string) }.Contains(property.GetType()))
+                {
+                    propertiesToSet[property.Key] = $"'{property.Value}'"; //quoted properties needs to have quotes around them in T-SQL..
+                }
+            }
+
+            foreach (var column in columns)
+            {
+                if (!propertiesToSet.ContainsKey(column.Key))
+                {
+                    continue;
+                }
+
+                if (columnIndex == 0)
+                {
+                    //sb.Append("(");
+                }
+                else
+                {
+                    sb.Append(",");
+                }
+                string columnName = ReflectionHelper.GetColumnName(column.Value);
+                sb.AppendLine($"{columnName} = @{column.Key}");
+
+                if (columnIndex == columnCount - 1)
+                {
+                    // sb.AppendLine(")");
+                }
+                columnIndex++;
+            }
+
+            sb.Append($"OUTPUT ");
+
+            int columnKeyIndex = 0;
+
+            foreach (var columnKey in columnKeys)
+            {
+                sb.Append($"INSERTED.{ReflectionHelper.GetColumnName(columnKey.Value)}");
+                if (columnKeyIndex > 0)
+                {
+                    sb.Append(",");
+                }
+            }
+            sb.Append(Environment.NewLine);
+
+            columnKeyIndex = 0;
+            foreach (var columnKey in columnKeys)
+            {
+                if (columnKeyIndex == 0)
+                {
+                    sb.Append($"WHERE {Environment.NewLine}");
+                }
+
+                int itemIndexUpdate = 0;
+                foreach (var item in rowsToUpdate)
+                {
+                    var itemValue = columnKey.Value.GetValue(item, null);
+
+                    if (new Type[] { typeof(DateTime), typeof(Guid), typeof(string) }.Contains(columnKey.Value.PropertyType))
+                    {
+                        itemValue = $"'{itemValue}'"; //quoted properties needs to have quotes around them in T-SQL..
+                    }
+                    if (itemIndexUpdate > 0)
+                    {
+                        sb.Append($"{Environment.NewLine} OR ");
+                    }
+                    sb.Append($"{columnKey.Key} = {itemValue}");
+
+                    itemIndexUpdate++;
+                }
+
+                columnKeyIndex++;
+            }
+
+            columnIndex = 0;
+            int itemIndex = 0;
+
+
+            columnIndex = 0;
+
+            foreach (var column in columns)
+            {
+                if (!propertiesToSet.ContainsKey(column.Key))
+                {
+                    continue;
+                }
+                dynamicParameters.Add($"@{column.Key}", propertiesToSet[column.Key]);
+                columnIndex++;
+            }
+
+            itemIndex++;
+
+            string sql = sb.ToString();
+
+            List<object> idsAfterUpdatesList = new List<object>();
+
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+
+                var idsAfterUpdates = (await connection.QueryAsync<object>(sql, dynamicParameters)).ToList();
+                if (idsAfterUpdates != null && idsAfterUpdates.Any())
+                {
+                    var idAfterUpdatesDict = (IDictionary<string, object>)ToExpandoObject(idsAfterUpdates.First());
+                    string firstColumnKey = columnKeys.Select(c => c.Key).First();
+                    object idAfterInsertionValue = idAfterUpdatesDict[firstColumnKey];
+                    idsAfterUpdatesList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+                }
+            }
+            return idsAfterUpdatesList;
+        }    
 
         /// <summary>
         /// Inserts multiple rows into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
