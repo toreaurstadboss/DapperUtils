@@ -1159,19 +1159,19 @@ namespace ToreAurstadIT.DapperUtils
         }
 
         /// <summary>
-        /// Inserts a row into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables
-        /// with a key of type int (i.e. IDENTITY columns usually). If you want to support tables with key of type
-        /// uniqueidentifier (Guid), use the parameter <paramref name="isKeyOfTypeGuid"/> set to true (defaults to false).
-        /// The method will try to set the newly generated id also on the first keyed column found. 
+        /// Inserts a row into a type of type <typeparamref name="TTable"/>. 
+        /// The method will also updated the values of the keyed columns (column attribute with the [Key] attribute, 
+        /// if their values are computed or identity from the DB).
         /// </summary>
         /// <typeparam name="TTable"></typeparam>
         /// <param name="connection"></param>
         /// <param name="rowToAdd"></param>
-        /// <returns>The updated key of type object, which can either be an int or a Guid of the types of keys supported by this method. Check the type via reflection before casting it at the receiving end.</returns>
-        public static async Task<object> Insert<TTable>(this IDbConnection connection, TTable rowToAdd,
-            bool isKeyOfTypeGuid = false)
+        /// <returns>The updated key of type object, which can be an int or a Guid of the types of keys supported by this method.
+        /// Check the type via reflection or before hand knowledge before casting it at the receiving end.</returns>
+        public static async Task<object> Insert<TTable>(this IDbConnection connection, TTable rowToAdd)
         {
             var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnKeys = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
             var sb = new StringBuilder();
             string tableName = GetDbTableName<TTable>();
             sb.AppendLine($"INSERT INTO {tableName}");
@@ -1189,68 +1189,100 @@ namespace ToreAurstadIT.DapperUtils
                 {
                     sb.Append("(");
                 }
-                else {
+                else
+                {
                     sb.Append(",");
                 }
                 sb.AppendLine($"{column.Key}");
 
-                if (columnIndex == columnCount-1)
+                if (columnIndex == columnCount - 1)
                 {
                     sb.AppendLine(")");
                 }
                 columnIndex++;
             }
+
+            sb.Append($"OUTPUT ");
+            int columnKeyIndex = 0;
+            foreach (var columnKey in columnKeys)
+            {
+                if (columnKeyIndex > 0)
+                {
+                    sb.Append(",INSERTED");
+                }
+                else
+                {
+                    sb.Append("INSERTED");
+                }
+                sb.Append($".{columnKey.Key}");
+                columnKeyIndex++;
+            }
+
             columnIndex = 0;
             foreach (var column in columns)
             {
                 if (columnIndex == 0)
                 {
-                    sb.AppendLine("VALUES (");
+                    sb.AppendLine($"{Environment.NewLine}VALUES (");
                 }
                 else
                 {
                     sb.Append(",");
                 }
-                sb.AppendLine($"@{column.Key}");
+                var columnValue = column.Value.GetValue(rowToAdd, null);
+                if (new Type[] { typeof(DateTime), typeof(string), typeof(Guid) }.Contains(column.Value.PropertyType))
+                {
+                    columnValue = $"'{columnValue}'";
+                }
+                if (new Type[] { typeof(double), typeof(double?), typeof(decimal), typeof(decimal?), typeof(Single), typeof(Single?) }.Contains(column.Value.PropertyType))
+                {
+                    columnValue = columnValue.ToString().Replace(",", "."); //some locale issues on numbers in some cultures.
+                }
 
-                if (columnIndex == columnCount-1)
+                if (new Type[] { typeof(bool), typeof(bool?) }.Contains(column.Value.PropertyType))
+                {
+                    bool columnValueParsed;
+                    bool.TryParse(columnValue.ToString(), out columnValueParsed);
+                    columnValue = columnValueParsed == true ? 1 : 0;
+                }
+
+                sb.AppendLine($"{columnValue}");
+
+                if (columnIndex == columnCount - 1)
                 {
                     sb.AppendLine(");");
                 }
                 columnIndex++;
             }
-            if (isKeyOfTypeGuid)
-            {
-                sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS UNIQUEIDENTIFIER)");
-            }
-            else
-            {
-                sb.AppendLine($"SELECT CAST(SCOPE_IDENTITY() AS INT)");
-            }        
+
             string sql = sb.ToString();
             var keyedColumns = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
 
-            object updatedId = null; 
-            try
-            {
-                if (!isKeyOfTypeGuid)
-                {
-                    updatedId = await connection.ExecuteScalarAsync<int>(sql, rowToAdd);
-                }
-                else
-                {
-                    updatedId = await connection.ExecuteScalarAsync<Guid>(sql, rowToAdd);
-                }
-                if (keyedColumns.Count() == 1)
-                {
-                    keyedColumns.First().Value.SetValue(rowToAdd, updatedId);
-                }
-            }
-            catch (Exception)
+            List<object> idsAfterInsertionList = new List<object>();
+
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
 
+                var idsAfterInsertion = (await connection.QueryAsync<object>(sql)).ToList();
+                if (idsAfterInsertion != null && idsAfterInsertion.Any())
+                {
+                    var idAfterInsertionDict = (IDictionary<string, object>)ToExpandoObject(idsAfterInsertion.First());
+                    string firstColumnKey = columnKeys.Select(c => c.Key).First();
+                    object idAfterInsertionValue = idAfterInsertionDict[firstColumnKey];
+                    idsAfterInsertionList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+
+                    //set also the key column values after insertion for all keys (now supporting compound keys
+
+                    foreach (var columnkey in columnKeys)
+                    {
+                        if (idAfterInsertionDict.ContainsKey(columnkey.Key))
+                        {
+                            columnkey.Value.SetValue(rowToAdd, idAfterInsertionDict[columnkey.Key]);
+                        }
+                    }
+                }
             }
-            return updatedId;
+            return idsAfterInsertionList.FirstOrDefault();
         }
 
         public static IEnumerable<ExpandoObject> ParameterizedQuery(this IDbConnection connection, string sql,

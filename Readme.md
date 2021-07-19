@@ -41,6 +41,9 @@ The lib includes generic helpers for modifying data:
 * InsertMany
 * UpdateMany
 * Delete
+* DeleteMany
+
+All methods are used by providing an IEnumerable of type TTable.
 
 UpdateMany needs a property bag of type IDictionary<string, object> to specify 
 which properties to set. 
