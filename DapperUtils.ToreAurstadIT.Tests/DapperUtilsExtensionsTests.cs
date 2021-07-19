@@ -260,8 +260,8 @@ namespace ToreAurstadIT.DapperUtils.Tests
 
             var updatePropertyBag = new Dictionary<string, object>
             {
-                { "UnitPrice", 130 },
-                { "UnitsInStock", 110 }
+                { "UnitPrice", 133 },
+                { "UnitsInStock", 192 }
             };
 
             products[0].ProductID = productIds.Cast<int>().ElementAt(0);
@@ -271,8 +271,10 @@ namespace ToreAurstadIT.DapperUtils.Tests
 
             foreach (var productId in productIds.Cast<int>())
             {
-                var productDeleted = Connection.Query<Product>($"select * from Products where ProductID = {productId}").First();
-                await Connection.Delete(productDeleted);
+                var productAfterUpdateToDelete = Connection.Query<Product>($"select * from Products where ProductID = {productId}").First();
+                productAfterUpdateToDelete.UnitPrice.Should().Be(133);
+                productAfterUpdateToDelete.UnitsInStock.Should().Be(192);
+                await Connection.Delete(productAfterUpdateToDelete);
             }
         }
 

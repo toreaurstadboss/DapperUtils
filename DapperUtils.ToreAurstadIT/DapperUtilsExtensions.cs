@@ -936,10 +936,13 @@ namespace ToreAurstadIT.DapperUtils
                 var idsAfterUpdates = (await connection.QueryAsync<object>(sql, dynamicParameters)).ToList();
                 if (idsAfterUpdates != null && idsAfterUpdates.Any())
                 {
-                    var idAfterUpdatesDict = (IDictionary<string, object>)ToExpandoObject(idsAfterUpdates.First());
-                    string firstColumnKey = columnKeys.Select(c => c.Key).First();
-                    object idAfterInsertionValue = idAfterUpdatesDict[firstColumnKey];
-                    idsAfterUpdatesList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+                    foreach (var idsAfterUpdate in idsAfterUpdates)
+                    {
+                        var idAfterUpdatesDict = (IDictionary<string, object>) ToExpandoObject(idsAfterUpdate);
+                        string firstColumnKey = columnKeys.Select(c => c.Key).First();
+                        object idAfterInsertionValue = idAfterUpdatesDict[firstColumnKey];
+                        idsAfterUpdatesList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+                    } //foreach 
                 }
             }
             return idsAfterUpdatesList;
