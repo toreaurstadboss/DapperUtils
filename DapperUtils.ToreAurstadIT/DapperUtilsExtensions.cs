@@ -736,6 +736,97 @@ namespace ToreAurstadIT.DapperUtils
             await connection.ExecuteScalarAsync(sql, rowToDelete);
         }
 
+        public static async Task<IEnumerable<object>> DeleteMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToDelete)
+        {
+            if (rowsToDelete.Count() > 1000)
+            {
+                throw new ArgumentException("Max 1000 rows may be added at a time due to DB limitations on UPDATE batch. Instead partition your data before calling this method as chunking by the method is not implemented yet.");
+            }
+            if (rowsToDelete.Count() < 1)
+            {
+                throw new ArgumentException("At least one row must be passed to this method.");
+            }
+
+            var rowsToDeleteList = rowsToDelete.ToList();
+
+            var dynamicParameters = new DynamicParameters();
+
+            var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
+            var columnKeys = ReflectionHelper.GetPublicPropertiesWithKeyAttribute<TTable>();
+
+            var sb = new StringBuilder();
+            string tableName = GetDbTableName<TTable>();
+            sb.AppendLine($"DELETE FROM {tableName}");
+  
+            int columnCount = columns.Count;
+
+            if (columnCount < 1)
+            {
+                throw new ArgumentException($"The table of type {typeof(TTable)} does not have any public properties / columns which are detected for the insert operation. Adjust your columns and table POCO class first. Aborting insert and throwing error");
+            }     
+
+            sb.Append($"OUTPUT ");
+
+            int columnKeyIndex = 0;
+
+            foreach (var columnKey in columnKeys)
+            {
+                sb.Append($"DELETED.{ReflectionHelper.GetColumnName(columnKey.Value)}");
+                if (columnKeyIndex > 0)
+                {
+                    sb.Append(",");
+                }
+            }
+            sb.Append(Environment.NewLine);
+
+            columnKeyIndex = 0;
+            foreach (var columnKey in columnKeys)
+            {
+                if (columnKeyIndex == 0)
+                {
+                    sb.Append($"WHERE {Environment.NewLine}");
+                }
+
+                int itemIndexUpdate = 0;
+                foreach (var item in rowsToDelete)
+                {
+                    var itemValue = columnKey.Value.GetValue(item, null);
+
+                    if (new Type[] { typeof(DateTime), typeof(Guid), typeof(string) }.Contains(columnKey.Value.PropertyType))
+                    {
+                        itemValue = $"'{itemValue}'"; //quoted properties needs to have quotes around them in T-SQL..
+                    }
+                    if (itemIndexUpdate > 0)
+                    {
+                        sb.Append($"{Environment.NewLine} OR ");
+                    }
+                    sb.Append($"{columnKey.Key} = {itemValue}");
+
+                    itemIndexUpdate++;
+                }
+
+                columnKeyIndex++;
+            }
+            string sql = sb.ToString();
+
+            List<object> idsAfterDeletedList = new List<object>();
+            using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var idsAfterDeletes = (await connection.QueryAsync<object>(sql, dynamicParameters)).ToList();
+                if (idsAfterDeletes != null && idsAfterDeletes.Any())
+                {
+                    foreach (var idsAfterDelete in idsAfterDeletes)
+                    {
+                        var idsAfterDeleteDict = (IDictionary<string, object>)ToExpandoObject(idsAfterDelete);
+                        string firstColumnKey = columnKeys.Select(c => c.Key).First();
+                        object idAfterInsertionValue = idsAfterDeleteDict[firstColumnKey];
+                        idsAfterDeletedList.Add(idAfterInsertionValue); //we do not return compound keys, only first keyed column. Perhaps later versions will return multiple keys per deleted row for compound keys
+                    } //foreach 
+                }
+            }
+            return idsAfterDeletedList;
+        }
+
         public static async Task Update<TTable>(this IDbConnection connection, TTable rowToUpdate)
         {
             var columns = ReflectionHelper.GetPublicProperties<TTable>(includePropertiesMarkedAsKeyOrNotDatabaseGenerated: false);
@@ -803,12 +894,10 @@ namespace ToreAurstadIT.DapperUtils
         public static async Task<IEnumerable<object>> UpdateMany<TTable>(this IDbConnection connection, IEnumerable<TTable> rowsToUpdate,
             IDictionary<string, object> propertiesToSet)
         {
-
             if (rowsToUpdate.Count() > 1000)
             {
-                throw new ArgumentException("Max 1000 rows may be added at a time due to DB limitations on INSERT batch. Instead partition your data before calling this method as chunking by the method is not implemented yet.");
+                throw new ArgumentException("Max 1000 rows may be added at a time due to DB limitations on UPDATE batch. Instead partition your data before calling this method as chunking by the method is not implemented yet.");
             }
-
             if (rowsToUpdate.Count() < 1)
             {
                 throw new ArgumentException("At least one row must be passed to this method.");

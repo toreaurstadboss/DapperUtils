@@ -186,6 +186,45 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
+        public async Task InsertManyAndDeleteManyPerformsExpected()
+        {
+            var product = new Product
+            {
+                ProductName = "Misvaerost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "300 g",
+                UnitPrice = 2.70M,
+                UnitsInStock = 130,
+                UnitsOnOrder = 0,
+                ReorderLevel = 20,
+                Discontinued = false
+            };
+            var anotherProduct = new Product
+            {
+                ProductName = "Jarslbergost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "170 g",
+                UnitPrice = 2.80M,
+                UnitsInStock = 70,
+                UnitsOnOrder = 0,
+                ReorderLevel = 10,
+                Discontinued = false
+            };
+
+            var products = new List<Product> { product, anotherProduct };
+            var productIds = await Connection.InsertMany(products);
+            productIds.Cast<int>().Count().Should().Be(2, "Expected to insert two rows into the DB.");
+            productIds.Cast<int>().All(p => p > 0).Should().Be(true, "Expected to insert two rows into the DB with non-zero ids");
+
+            var productsToDelete = Connection.Query<Product>($"select * from Products where ProductID IN ({string.Join(",", productIds.Cast<int>().ToArray())})").ToList();
+            await Connection.DeleteMany<Product>(productsToDelete);
+            var productsAfterDelete = Connection.Query<Product>($"select * from Products where ProductID IN ({string.Join(",", productIds.Cast<int>().ToArray())})").ToList();
+            productsAfterDelete.Should().BeEmpty("Expected to have removed the added products via the DeleteMany method");
+        }
+
+        [Test]
         public async Task InsertManyAndRemoveAgainPerformsExpected()
         {
             var product = new Product
