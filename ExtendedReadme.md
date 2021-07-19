@@ -1,20 +1,3 @@
-﻿  
-### ToreAurstadIT.DapperHelpers.NetStandard
-
-This Nuget package contains assorted helper methods for Dapper.
-There are already multiple helper libraries for Dapper, but this 
-library will complement missing helper methods that DapperContrib and 
-DapperUtils do not include yet.
-
-To use the helper methods, add a using of the following namespace to your code first to access the 
-public extension methods of the library.
-
-```csharp
-using ToreAurstadIT.DapperUtils;
-```
-
-Now you can access the methods of this lib via your IDbConnection ADO.NET DB Connection instance.
-
 ### Inner joins via typed lambda expressions
 
 The library supports helpers for joining 2-7 tables via lambda expresisions. The joins are for now
@@ -39,6 +22,8 @@ format and make note that we select ALL columns from the tables via all the publ
 on your DTO. If you want to specify another tablename for the DTO, use the [Table] attribute
 from System.ComponentModel.DataAnnotations.Schema namespace. If you want to ignore a property, add the
 [NotMapped] attribute to the property (column) to skip from the result set.
+
+I will add a filtering capability on this join method and other join types such as left outer joins in the future.
 
 The following example shows how you can join six tables via typed lambda expressions with helper method *InnerJoin*. 
 
@@ -131,6 +116,71 @@ Note that this method is asynchronous and returns the ID value of this insert op
 Note this Special case: This method will not return any value in case all your columns are non-calculated, i.e. the Primary key has DatabaseGenerated Options equal to None.
 Other than that, await this insert method and get the ID of the inserted row to look up the row later if desired.
 
+## Inserting many, updating many and removing rows 
+The lib contains multiple generic methods for insert data into tables of type TTable. This makes it easy to 
+modify data. Please note that only keys of type int or guid (int / uniqueidentifier) are handled.
+Again, to specify keys in the POCO, add the [Key] attribute to at least a column. Compount keys, rows with multiple keys 
+have not been tested thoroughly yet. 
+
+The following test shows how we insert two rows into Products table of Northwind and then update these rows 
+and also delete them afterwards. We do not write any manual sql, but just pass in the objects of type TTable into 
+the generic methods the lib offers, InsertMany, UpdateMany and Delete.
+
+```csharp 
+ [Test]
+        public async Task InsertManyAndUpdateManyRemoveAgainPerformsExpected()
+        {
+            var product = new Product
+            {
+                ProductName = "Misvaerost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "300 g",
+                UnitPrice = 2.70M,
+                UnitsInStock = 130,
+                UnitsOnOrder = 0,
+                ReorderLevel = 20,
+                Discontinued = false
+            };
+            var anotherProduct = new Product
+            {
+                ProductName = "Jarslbergost",
+                SupplierID = 15,
+                CategoryID = 4,
+                QuantityPerUnit = "170 g",
+                UnitPrice = 2.80M,
+                UnitsInStock = 70,
+                UnitsOnOrder = 0,
+                ReorderLevel = 10,
+                Discontinued = false
+            };
+
+            var products = new List<Product> { product, anotherProduct };
+            var productIds = await Connection.InsertMany(products);
+            productIds.Cast<int>().Count().Should().Be(2, "Expected to insert two rows into the DB.");
+            productIds.Cast<int>().All(p => p > 0).Should().Be(true, "Expected to insert two rows into the DB with non-zero ids");
+
+            var updatePropertyBag = new Dictionary<string, object>
+            {
+                { "UnitPrice", 133 },
+                { "UnitsInStock", 192 }
+            };
+
+            products[0].ProductID = productIds.Cast<int>().ElementAt(0);
+            products[1].ProductID = productIds.Cast<int>().ElementAt(1);
+
+            var updatedProductsIds = await Connection.UpdateMany(products, updatePropertyBag);
+
+            foreach (var productId in productIds.Cast<int>())
+            {
+                var productAfterUpdateToDelete = Connection.Query<Product>($"select * from Products where ProductID = {productId}").First();
+                productAfterUpdateToDelete.UnitPrice.Should().Be(133);
+                productAfterUpdateToDelete.UnitsInStock.Should().Be(192);
+                await Connection.Delete(productAfterUpdateToDelete);
+            }
+        }
+
+```
 
 ## Retrieving paginated data from DB 
 
@@ -215,4 +265,3 @@ Edit the .nuspec file and bump versions and run:
 nuget pack -Prop Configuration=Release
 ``` 
 Then upload nuget package to nuget.org again with new version.
-
