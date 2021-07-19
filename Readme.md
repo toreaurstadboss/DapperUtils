@@ -46,7 +46,8 @@ The lib includes generic helpers for modifying data:
 All methods are used by providing an IEnumerable of type TTable.
 
 UpdateMany needs a property bag of type IDictionary<string, object> to specify 
-which properties to set. 
+which properties to set. Insert and InsertMany will also set the keyed columns values computed from the DB if the 
+column is IDENTITY or COMPUTED.
 
 ```csharp
     [Test]

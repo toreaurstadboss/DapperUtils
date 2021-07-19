@@ -1133,13 +1133,13 @@ namespace ToreAurstadIT.DapperUtils
                 }
             }); 
             
- 
             sb.AppendLine($"{Environment.NewLine}VALUES ({(string.Join(",", columns.Select(c => $"@{c.Key}").ToArray()))})");
             
             string sql = sb.ToString();
 
             List<object> idsAfterInsertionList = new List<object>();
 
+            var rowIndex = 0;
             using (var transactionScope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
                 foreach (var dynamicParametersForItem in dynamicParametersForItems)
@@ -1150,11 +1150,25 @@ namespace ToreAurstadIT.DapperUtils
                         var idAfterInsertionDict = (IDictionary<string, object>) ToExpandoObject(idsAfterInsertion.First());
                         string firstColumnKey = columnKeys.Select(c => c.Key).First();
                         object idAfterInsertionValue = idAfterInsertionDict[firstColumnKey];
-                        idsAfterInsertionList.Add(idAfterInsertionValue); //we do not support compound keys, only items with one key column. Perhaps later versions will return multiple ids per inserted row for compound keys, this must be tested.
+                        idsAfterInsertionList.Add(idAfterInsertionValue); //we do not return compound keys, only the first key is returned per inserted row. Perhaps later versions will return multiple keys per inserted row for compound keys
+
+                        //also set the keyed column value after insertmany against DB. (this is computed by DB)
+                        var rowToAdd = rowsToAdd.ElementAtOrDefault(rowIndex);
+                        if (rowToAdd != null)
+                        {
+                            foreach (var columnkey in columnKeys)
+                            {
+                                if (idAfterInsertionDict.ContainsKey(columnkey.Key))
+                                {                                    
+                                    columnkey.Value.SetValue(rowToAdd, idAfterInsertionDict[columnkey.Key]);
+                                }
+                            }
+                        }
+                        
+                        rowIndex++;
                     }
                 }
-            }
-           
+            }        
             return idsAfterInsertionList;
         }
 
@@ -1166,7 +1180,8 @@ namespace ToreAurstadIT.DapperUtils
         /// <typeparam name="TTable"></typeparam>
         /// <param name="connection"></param>
         /// <param name="rowToAdd"></param>
-        /// <returns>The updated key of type object, which can be an int or a Guid of the types of keys supported by this method.
+        /// <returns>The inserted key of type object, which can be an int or a Guid of the types of keys supported by this method.
+        /// At insertion, the DB will generate an ID if we set IDENTITY or computed on a column which is a key column.
         /// Check the type via reflection or before hand knowledge before casting it at the receiving end.</returns>
         public static async Task<object> Insert<TTable>(this IDbConnection connection, TTable rowToAdd)
         {
