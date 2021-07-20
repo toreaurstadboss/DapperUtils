@@ -115,8 +115,19 @@ namespace ToreAurstadIT.DapperUtils.Tests
         public async Task  GetGroupsReturnsExpected()
         {
             var groups = await Connection.GetGroups(new Expression<Func<Product, object>>[] { p => p.CategoryID });
-            Assert.IsTrue(true);
+            groups.First().Rows.Count().Should().Be(12);
+            string productsInFirstGroup = string.Join(",", groups.First().Rows.Select(c => c.ProductName)); 
+            productsInFirstGroup.Should().BeEquivalentTo("Chai,Chang,Guaraná Fantástica,Sasquatch Ale,Steeleye Stout,Côte de Blaye,Chartreuse verte,Ipoh Coffee,Laughing Lumberjack Lager,Outback Lager,Rhönbräu Klosterbier,Lakkalikööri");
+        }
 
+        [Test]
+        public async Task GetGroupsWithTwoGroupKeysReturnsExpected()
+        {
+            var groups = await Connection.GetGroups(new Expression<Func<Product, object>>[] { p => p.CategoryID, p => p.SupplierID },
+                loadItemsInGroup: true);
+            groups.First().Rows.Count().Should().Be(2);
+            string productsInFirstGroup = string.Join(",", groups.First().Rows.Select(c => c.ProductName));
+            productsInFirstGroup.Should().BeEquivalentTo("Chai,Chang");
         }
 
         [Test]

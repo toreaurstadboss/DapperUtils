@@ -1,3 +1,38 @@
+# Extended Readme
+This readme file contains additional examples and describes functionality of the the lib.
+As always, remember to put this namespace into your file to access the methods. They will be available on the IDbConnection object as extension methods. 
+
+```csharp
+using ToreAurstadIT.DapperUtils;
+```
+
+### Generic grouping method
+The following examples shows the generic grouping method of the lib. Multiple grouping keys are possible.
+
+```csharp
+
+
+        [Test]
+        public async Task  GetGroupsReturnsExpected()
+        {
+            var groups = await Connection.GetGroups(new Expression<Func<Product, object>>[] { p => p.CategoryID });
+            groups.First().Rows.Count().Should().Be(12);
+            string productsInFirstGroup = string.Join(",", groups.First().Rows.Select(c => c.ProductName)); 
+            productsInFirstGroup.Should().BeEquivalentTo("Chai,Chang,Guaraná Fantástica,Sasquatch Ale,Steeleye Stout,Côte de Blaye,Chartreuse verte,Ipoh Coffee,Laughing Lumberjack Lager,Outback Lager,Rhönbräu Klosterbier,Lakkalikööri");
+        }
+
+        [Test]
+        public async Task GetGroupsWithTwoGroupKeysReturnsExpected()
+        {
+            var groups = await Connection.GetGroups(new Expression<Func<Product, object>>[] { p => p.CategoryID, p => p.SupplierID },
+                loadItemsInGroup: true);
+            groups.First().Rows.Count().Should().Be(2);
+            string productsInFirstGroup = string.Join(",", groups.First().Rows.Select(c => c.ProductName));
+            productsInFirstGroup.Should().BeEquivalentTo("Chai,Chang");
+        }
+
+```
+
 ### Inner joins via typed lambda expressions
 
 The library supports helpers for joining 2-7 tables via lambda expresisions. The joins are for now

@@ -106,6 +106,7 @@ column is IDENTITY or COMPUTED.
 ### Additional methods in the lib
 
 The lib also includes methods for:
+* Generic grouping method which accepts multiple lambda expressions.
 * Paginated access
 * Parameterized Query
 * Like operator support

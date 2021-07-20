@@ -1038,13 +1038,16 @@ namespace ToreAurstadIT.DapperUtils
         }
 
         /// <summary>
-        /// Returns groupings from given grouping expression array (multiple group keys are possible).
+        /// Returns groupings from given grouping expression array (multiple group keys are possible). Default, the items of the grouping will also
+        /// be loaded, if this is not desired because for example the data source is slow or contains much data, set the <paramref name="loadItemsInGroup"/>
+        /// to false.
         /// </summary>
         /// <typeparam name="TTable"></typeparam>
         /// <param name="connection"></param>
-        /// <param name="groupingkeys"></param>
+        /// <param name="groupingkeys">Array of member expressions to group by, for example p => p.ProductID or similar (must of course be a property of the <typeparamref name="TTable"/> POCO object</param>
         /// <returns></returns>
-        public static async Task<IEnumerable<GroupingInfo<TTable>>> GetGroups<TTable>(this IDbConnection connection, Expression<Func<TTable, object>>[] groupingkeys)
+        public static async Task<IEnumerable<GroupingInfo<TTable>>> GetGroups<TTable>(this IDbConnection connection,
+            Expression<Func<TTable, object>>[] groupingkeys, bool loadItemsInGroup = true)
         {
             string[] groupkeys = groupingkeys.Select(k => ReflectionHelper.GetColumnNameFromMemberExpression(k)).ToArray();
             if (groupkeys == null || groupkeys.Length < 1)
@@ -1053,15 +1056,26 @@ namespace ToreAurstadIT.DapperUtils
             }
             string columnsWithGroupKeys = string.Join(",", groupkeys);
             string sql = $"SELECT {columnsWithGroupKeys}, COUNT(*) AS TotalCount FROM {GetDbTableName<TTable>()}{Environment.NewLine} GROUP BY {columnsWithGroupKeys}";
-            var result = connection.Query(sql).Select(r => (IDictionary<string, object>)ToExpandoObject(r)).Select(r =>
+            var resultFromDb = await connection.QueryAsync(sql);                            
+            var result = resultFromDb.Select(r => (IDictionary<string, object>)ToExpandoObject(r)).Select(r =>
                new GroupingInfo<TTable>() {
                    TotalCount = Convert.ToInt32(r["TotalCount"]),
-                   Key = GetKeyRepresentationForGrouping(r)
+                   Key = GetKeyRepresentationForGrouping<TTable>(r),
+                   Rows = !loadItemsInGroup ? null : GetRowsForGroup<TTable>(connection, columnsWithGroupKeys, 
+                   GetKeyRepresentationForGrouping<TTable>(r))
                });
-            return null;
+            return result;
         }
-          
-        private static string GetKeyRepresentationForGrouping(IDictionary<string, object> inputDict)
+
+        private static IEnumerable<TTable> GetRowsForGroup<TTable>(IDbConnection connection, string columnsWithGroupKeys, string whereClauseForRows)
+        {
+            whereClauseForRows = whereClauseForRows.Replace(",", " AND "); //the where clause must be adjusted a bit.
+            string sql = $"SELECT * FROM {GetDbTableName<TTable>()} WHERE {whereClauseForRows}";
+            var rows = connection.Query<TTable>(sql);
+            return rows;
+        }
+
+        private static string GetKeyRepresentationForGrouping<TTable>(IDictionary<string, object> inputDict)
         {
             var sb = new StringBuilder();
             int keysLength = inputDict.Keys.Count() - 1; //TotalCount Key is to be skipped
@@ -1073,7 +1087,7 @@ namespace ToreAurstadIT.DapperUtils
                     continue;
                 }
                 var value = inputDict[key];
-                sb.Append($"{key}={(value?.ToString())}");
+                sb.Append($"{key}={(GetQuotedValue<TTable>(key, value))}");
                 if (keyIndex < keysLength - 1)
                 {
                     sb.Append(",");
@@ -1083,8 +1097,17 @@ namespace ToreAurstadIT.DapperUtils
             return sb.ToString();            
         }
 
+        private static Type[] QuotedPropertyTypes => new Type[] { typeof(string), typeof(DateTime), typeof(DateTime?), typeof(Guid), typeof(Guid?) };
 
-
+        private static string GetQuotedValue<T>(string key, object value)
+        {
+            var propType = typeof(T).GetProperty(key).PropertyType;
+            if (QuotedPropertyTypes.Contains(propType))
+            {
+                value = $"'{value}'";
+            }
+            return Convert.ToString(value);
+        }
 
         /// <summary>
         /// Inserts multiple rows into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables

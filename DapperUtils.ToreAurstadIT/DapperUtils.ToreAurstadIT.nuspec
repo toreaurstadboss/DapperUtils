@@ -2,7 +2,7 @@
 <package >
 	<metadata>
 		<id>ToreAurstadIt.DapperHelpers.NetStandard</id>
-		<version>1.5.0</version>
+		<version>1.6.0</version>
 		<title>ToreAurstadIt.DapperHelpers.NetStandard</title>
 		<authors>Tore Aurstad IT</authors>
 		<requireLicenseAcceptance>false</requireLicenseAcceptance>
@@ -10,6 +10,7 @@
 		<projectUrl>https://github.com/toreaurstadboss/DapperUtils</projectUrl>
 		<icon>images\toolbox.jpg</icon>
 		<description>Assorted helper methods for Dapper. Contains Paging methods and join methods which accepts static typed lambda expressions.
+		Also includes generic methods for insert, insertmany, delete, deletemany and update and updatemany. Also added generic grouping method and some misc additional methods. 
 		This package of course demands that Dapper is added to your solution, but there are no dependencies on the package itself.
 		</description>
 		<releaseNotes>Supported frameworks are any .NET Framework and .NET Core support .NET Standard 2.</releaseNotes>
