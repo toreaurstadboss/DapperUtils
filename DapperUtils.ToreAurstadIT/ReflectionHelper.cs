@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Linq;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
+using System.Linq.Expressions;
 
 namespace ToreAurstadIT.DapperUtils
 {
@@ -19,6 +20,28 @@ namespace ToreAurstadIT.DapperUtils
         {
             return typeof(TTable).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                 .Where(p => p.GetCustomAttributes(typeof(KeyAttribute), true).Any()).ToDictionary(x => GetColumnName(x), x => x);
+        }
+
+        public static string GetColumnNameFromMemberExpression<TTAble>(Expression<Func<TTAble, object>> member) {
+
+            var body = member.Body as MemberExpression;
+            if (body == null && member.Body.NodeType == ExpressionType.Convert)
+            {
+                var un = member.Body as UnaryExpression;
+                if (un != null && un.Operand != null)
+                {
+                    body = un.Operand as MemberExpression;
+                }
+            }
+            if (body != null && body.Member != null)
+            {
+                var propinfo = body.Member as PropertyInfo;
+                if (propinfo != null)
+                {
+                    return GetColumnName(propinfo);
+                }
+            }
+            return null;           
         }
 
         /// <summary>

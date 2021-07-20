@@ -1035,7 +1035,56 @@ namespace ToreAurstadIT.DapperUtils
                 }
             }
             return idsAfterUpdatesList;
-        }    
+        }
+
+        /// <summary>
+        /// Returns groupings from given grouping expression array (multiple group keys are possible).
+        /// </summary>
+        /// <typeparam name="TTable"></typeparam>
+        /// <param name="connection"></param>
+        /// <param name="groupingkeys"></param>
+        /// <returns></returns>
+        public static async Task<IEnumerable<GroupingInfo<TTable>>> GetGroups<TTable>(this IDbConnection connection, Expression<Func<TTable, object>>[] groupingkeys)
+        {
+            string[] groupkeys = groupingkeys.Select(k => ReflectionHelper.GetColumnNameFromMemberExpression(k)).ToArray();
+            if (groupkeys == null || groupkeys.Length < 1)
+            {
+                throw new ArgumentException("Provide valid grouping keys.");
+            }
+            string columnsWithGroupKeys = string.Join(",", groupkeys);
+            string sql = $"SELECT {columnsWithGroupKeys}, COUNT(*) AS TotalCount FROM {GetDbTableName<TTable>()}{Environment.NewLine} GROUP BY {columnsWithGroupKeys}";
+            var result = connection.Query(sql).Select(r => (IDictionary<string, object>)ToExpandoObject(r)).Select(r =>
+               new GroupingInfo<TTable>() {
+                   TotalCount = Convert.ToInt32(r["TotalCount"]),
+                   Key = GetKeyRepresentationForGrouping(r)
+               });
+            return null;
+        }
+          
+        private static string GetKeyRepresentationForGrouping(IDictionary<string, object> inputDict)
+        {
+            var sb = new StringBuilder();
+            int keysLength = inputDict.Keys.Count() - 1; //TotalCount Key is to be skipped
+            int keyIndex = 0;
+            foreach (var key in inputDict.Keys)
+            {
+                if (key == "TotalCount")
+                {
+                    continue;
+                }
+                var value = inputDict[key];
+                sb.Append($"{key}={(value?.ToString())}");
+                if (keyIndex < keysLength - 1)
+                {
+                    sb.Append(",");
+                }
+                keyIndex++;
+            }
+            return sb.ToString();            
+        }
+
+
+
 
         /// <summary>
         /// Inserts multiple rows into a type of type <typeparamref name="TTable"/>. Note ! This only works for tables

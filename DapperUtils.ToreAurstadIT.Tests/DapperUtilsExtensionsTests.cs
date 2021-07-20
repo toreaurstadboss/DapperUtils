@@ -112,6 +112,14 @@ namespace ToreAurstadIT.DapperUtils.Tests
         }
 
         [Test]
+        public async Task  GetGroupsReturnsExpected()
+        {
+            var groups = await Connection.GetGroups(new Expression<Func<Product, object>>[] { p => p.CategoryID });
+            Assert.IsTrue(true);
+
+        }
+
+        [Test]
         public void GetAvgReturnsExpected()
         {
             var avgs = Connection.GetAggregate<Product>(p => p.UnitsInStock, AggregateFunction.Avg,
